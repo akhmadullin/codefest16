@@ -1,0 +1,3440 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <title>Как мы web vitals оптимизировали</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="node_modules/@shower/ribbon/styles/styles.css">
+    <link rel="stylesheet" href="./lib/highlight/styles/vs2015.min.css">
+    <style>
+        @font-face {
+            font-family: 'Montserrat';
+            font-weight: 400;
+            src: url(./fonts/Montserrat/Montserrat-Regular.woff2)
+                format("woff2");
+        }
+
+        @font-face {
+            font-family: 'Montserrat';
+            font-weight: 600;
+            src: url(./fonts/Montserrat/Montserrat-SemiBold.woff2)
+                format("woff2");
+        }
+
+        @font-face {
+            font-family: 'Montserrat';
+            font-weight: 700;
+            src: url(./fonts/Montserrat/Montserrat-Bold.woff2)
+                format("woff2");
+        }
+
+        @font-face {
+            font-family: 'Montserrat';
+            font-weight: 900;
+            src: url(./fonts/Montserrat/Montserrat-Black.woff2)
+                format("woff2");
+        }
+        .shower {
+            --slide-ratio: calc(16 / 9);
+            --color-additional: #32a3dc;
+            --color-black: #000;
+            --color-fill: rgb(246 249 255 / 10%);
+        }
+
+        .slide {
+            background-color: rgb(22, 22, 22);
+        }
+
+        .slide::after {
+            height: auto;
+            width: calc(var(--ribbon-size)* 1.5);
+            background-color: var(--color-additional);
+            color: black;
+            background-image: none;
+            margin-top: 1em;
+            padding-right: 0.5em;
+            padding-top: 0;
+            left: auto;
+            right: 0;
+        }
+
+        .progress::before {
+            background-color: var(--color-additional);
+        }
+
+        .slide.without-progress.active ~ .progress {
+            display: none;
+        }
+
+        header.caption h1 {
+            font-family: 'Montserrat';
+            font-size: 0.8em;
+        }
+
+        .slide h2 {
+            color: var(--text-color);
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .shower {
+            font: 25px/2 'Montserrat', sans-serif;
+            color: white;
+        }
+
+        #intro::after,
+        #about-me::after,
+        #the-end::after,
+        .the-end::after {
+            display: none;
+        }
+
+        #the-end,
+        .the-end {
+            background-color: #011b3a;
+        }
+
+        .intro-slide {
+            background-color: #011b3a;
+        }
+
+        .intro-text {
+            position: relative;
+        }
+
+        .centered-slide-title {
+            width: 100%;
+            text-align: center;
+            padding: 0 10px;
+        }
+
+        .slide ul > li:lang(ru)::before {
+            content: "›";
+            font-size: 1.4em;
+            line-height: 1.3;
+            color: white;
+        }
+/* 
+        .slide ul.plus-minus-list > li:lang(ru)::before {
+            line-height: 36px;
+        }
+
+        .slide ul.plus-minus-list {
+            line-height: 40px;
+        }
+
+        .slide_plus-minus-list {
+            padding: 30px 30px 0 75px;
+        }
+
+        .slide_plus-minus-list__title,
+        .slide_agregation__title,
+        .slide_lab-field-npm__title {
+            margin: 0 0 10px;
+            font-size: 1.3em;
+        } */
+
+        .without-margins {
+            margin: 0;
+        }
+
+        #about-me h2 {
+            margin-left: -30px;
+        }
+
+        /* .two-mobile-devices-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 90%; 
+        }
+
+        .mobile-device-iframe {
+            height: 100%;
+            border-radius: 20px;
+            background-color: #3a3d42;
+        } */
+
+        /* .metric-border-values-image {
+            height: 90%;
+        }
+
+        .metric-border-values-image-my {
+            height: 70%;
+        } */
+
+        /* .base-button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            background-color: #3a3d42;
+            color: white;
+            border: 2px solid #cdcdcd;
+            cursor: pointer;
+            transition: background-color 150ms ease-in-out;
+            font-weight: bold;
+        }
+
+        .base-button:not(:disabled):hover {
+            background-color: rgb(54, 56, 62);
+        }
+
+        .base-button:disabled {
+            opacity: 0.5;
+            cursor: default;
+        } */
+
+        /* .one-iframe-container {
+            display: flex;
+            height: 90%; 
+            gap: 40px;
+            margin-top: -20px;
+        }
+
+        .one-iframe-container_iframe-wrapper {
+            flex: 1 1 65%;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .one-iframe-container_controls-wrapper {
+            flex: 1 1 35%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .example-title-label {
+            font-weight: bold;
+            font-size: 0.7em;
+            color: #888888;
+            line-height: 1;
+        }
+
+        .example-title-value {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .several-iframes-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            height: 90%; 
+            margin-top: -40px;
+        }
+
+        .several-iframes-row > * {
+            flex: 1 0 0px;
+            min-width: 0;
+        } */
+
+        .slide pre code {
+            line-height: 1.4;
+            font-size: 0.9em;
+        }
+
+        .muted {
+            opacity: 0.4;
+        }
+
+        /* .muted-little {
+            opacity: 0.7;
+        } */
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .accented {
+            color: #00A3E9;
+        }
+
+        .line-throughed {
+            text-decoration: line-through;
+        }
+
+        .slide-with-table {
+            padding-top: 40px;
+        }
+
+        .slide th.th-short-column {
+            width: 150px;
+            text-align: center;
+        }
+
+        .slide h2 {
+            line-height: 1.4;
+            text-wrap: balance;
+        }
+
+        table tbody tr td:first-child {
+            font-size: 1em;
+        }
+
+        .slide tr:not(:last-of-type) > * {
+            background-image: linear-gradient(to top, var(--color-line) 0.1em, transparent 0.1em);
+            background-repeat: repeat-x;
+        }
+
+        .slide td.td-with-icon {
+            text-align: center;
+        }
+
+        .light-image {
+            filter: brightness(0.9);
+        }
+
+        .dark-image {
+            filter: brightness(1.4) contrast(0.9);
+        }
+
+        .slide.slide-with-dom-size-table {
+            padding-top: 200px;
+            padding-left: 110px;
+            padding-right: 110px;
+        }
+        .slide.slide-with-dom-size-table table {
+            font-size: 0.9em;
+        }
+        .slide .fixed-width-column {
+            width: 165px;
+            text-align: right;
+        }
+
+        .slide .fixed-width-column.left-align {
+            text-align: left;
+        }
+
+        /* .scheme-psi {
+            height: 80%;
+        }
+
+        .scheme-rum {
+            width: 88%;
+        }
+
+        .scheme-lib-rum {
+            width: 80%;
+        }
+
+        .scheme-vector {
+            height: 80%;
+        } */
+
+        a.link-to-recommendation {
+            color: #ffffff;
+            /* color: var(--color-additional); */
+        }
+
+        a.copyright {
+            color: var(--color-black);
+            padding: 0.2em 0.7em;
+            background-color: var(--color-additional);
+            border-radius: 1em;
+            background-image: none;
+            line-height: 1.6;
+        }
+
+        a.copyright:hover, a.copyright:focus {
+            opacity: 1;
+        }
+
+        .metric-list-item {
+            display: flex;
+            gap: 20px;
+        }
+
+        .metric-list-item__name-short {
+            flex: 0 0 75px;
+            font-weight: bold;
+        }
+
+        .metric-list-item__name-full {
+            color: #999999;
+            font-weight: 600;
+        } 
+
+        .round {
+            border-radius: 50%;
+        }
+
+        .rounded {
+            border-radius: 16px;
+        }
+
+        .rounded-small {
+            border-radius: 6px;
+        }
+
+        .lh-wrap { 
+            background:#161616;
+            border-radius:12px;
+            padding:12px;
+        }
+        .lh-metrics { 
+            display:flex;
+            flex-direction:column;
+            gap:15px;
+        }
+        .lh-row { 
+            display:flex; 
+            align-items:center;
+            gap:10px;
+            padding:8px 16px;
+            border-radius:8px;
+            background:#2e2e2e;
+        }
+        .lh-dot {
+            width:10px;
+            height:10px;
+            border-radius:50%;
+            flex-shrink:0;
+        }
+        .lh-name { 
+            font-size:25px;
+            font-weight:500; 
+            color:#e0ddd4;
+            font-family:monospace;
+            width:80px;
+        }
+        .lh-val { 
+            font-size:25px; 
+            font-weight:500; 
+            width: 130px;
+            color: #c2c0b6;
+        }
+        .lh-thr { 
+            font-size:16px; 
+            color:#a8a49c; 
+            flex:1;
+        }
+        .lh-badge { 
+            font-size:16px; 
+            font-weight:500; 
+            width: 70px;
+            text-align: center;
+            padding:2px 8px; 
+            border-radius:4px; 
+            white-space:nowrap; 
+            color:#fff;
+        }
+
+        .lh-row__green {
+            .lh-dot {
+                background-color: #639922;
+            }
+            .lh-badge {
+                background-color: #3B6D11;
+            }
+        }
+
+        .lh-row__yellow {
+            .lh-dot {
+                background-color: #EF9F27;
+            }
+            .lh-badge {
+                background-color: #854F0B;
+            }
+            .lh-val {
+                color:#FAC775
+            }
+        }
+
+        .lh-row__red {
+            .lh-dot {
+                background-color: #E24B4A;
+            }
+            .lh-badge {
+                background-color: #A32D2D;
+            }
+            .lh-val {
+                color:#F09595
+            }
+        }
+
+        .slide-section-title {
+            /* background: linear-gradient(146deg, #3c5289, #1e397c, #011b3a); */
+            background: linear-gradient(146deg, #1e397c, #011b3a);
+        }
+
+        .slide-section-title::after {
+            /* display: none; */
+            visibility: hidden;
+        }
+
+        .slide blockquote.sensey-quote::before {
+            font-family: 'PT Sans';
+            font-size: 6em;
+            margin-top: 0;
+        }
+
+        .slide ul.list-without-marker > li:lang(ru)::before {
+            content: '';
+        }
+
+        .numbers-about-company {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 50px 80px;
+        }
+
+        .number-about-company-card {
+            /* background-color: #f0efeb;
+            color: rgb(22, 22, 22); */
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            /* position: relative; */
+        }
+
+        /* .number-about-company-card::after {
+            position: absolute;
+            content: '';
+            top: 20px;
+            right: 20px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #e00008;
+        } */
+
+        .number-about-company-card_red {
+            background-color: #e00008;
+            color: white;
+        }
+
+        .number-about-company-card_white {
+            background-color: white;
+            color: #222222;
+        }
+
+        .number-about-company-card_dark-gray {
+            background-color: #cccccc;
+            color: #222222;
+        }
+
+        .number-about-company-card_light-gray {
+            background-color: #f0efeb;
+            color: #222222;
+        }
+
+        .number-about-company-card__number {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .number-about-company-card__caption {
+            font-size: 0.7em;
+        }
+
+        .end-bio__links {
+            margin-top: 100px;
+        }
+
+        .end-bio__link-block {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .end-bio__link-logo {
+            width: 40px;
+            height: 40px;
+            flex: none;
+        }
+
+        .slide .end-bio__link {
+            color: #ffffff;
+            font-size: 22px;
+            line-height: 1.5;
+            margin-bottom: 3px;
+        }
+
+        .subheading {
+            color: var(--color-additional);
+            margin: 10px 0 5px
+        }
+
+        .end__subheading {
+            color: var(--color-additional);
+            font-size: 0.8em;
+            margin-bottom: 5px;
+        }
+
+        .qr-code {
+            display: block;
+            box-sizing: border-box;
+            background-color: #ffffff;
+            padding: 8px;
+        }
+
+        .metric-chart-slide {
+            padding: 48px 56px 36px;
+        }
+
+        .metric-chart-host {
+            width: 100%;
+        }
+
+        .the-end-2 {
+            background-color: #1b1b1b;
+            padding: 45px;
+            padding-bottom: 45px;
+            display: grid;
+            grid-template-columns: 1.9fr 1.1fr;
+            gap: 30px 20px;
+        }
+
+        .the-end-2-bio-block {
+            background-color: #000000;
+            border-radius: 22px;
+            padding: 33px;
+            padding-top: 66px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: bold;
+
+
+            h2 {
+                /* font-weight: 400; */
+                font-family: 'Montserrat', sans-serif;
+                font-size: 42px;
+                margin-bottom: 15px;
+            }
+        }
+
+        .the-end-2-bio-block__secondary-text {
+            color: #7e7e7e;
+            font-size: 23px;
+        }
+
+        .the-end-2-tg-block {
+            background-color: #ffffff;
+            color: #000000;
+            border-radius: 22px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 33px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: bold;
+
+            img {
+                width: 100%;
+            }
+
+            a {
+                color: #000000;
+                line-height: 1;
+                text-decoration: none;
+                background-image: none;
+            }
+
+            a:hover {
+                color: #ce2424;
+            }
+        }
+
+        .the-end-2__bio {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            line-height: 1;
+            font-size: 16px;
+            color: #7e7e7e;
+
+            img {
+                width: 80px;
+                height: 80px;
+                object-fit: cover;
+                border-radius: 50%;
+            }
+
+            h3 {
+                margin: 0;
+                margin-bottom: 10px;
+                font-size: 22px;
+                /* font-weight: 400; */
+                color: #ffffff;
+            }
+        }
+
+        .the-end-2-conf-colonctitum {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            
+            img {
+                width: 15px;
+                height: 15px;
+            }
+        }
+
+        .the-end-2__conf-name {
+            font-size: 10px;
+            color: #7e7e7e;
+        }
+
+        .section-title-2 {
+            background-color: #1b1b1b;
+            padding: 50px;
+        }
+
+        .section-title-2__text-container {
+            background-color: #000000;
+            border-radius: 22px;
+            padding: 33px;
+            width: 80%;
+            height: 80%;
+            display: flex;
+            align-items: center;
+
+            h2 {
+                font-size: 65px;
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+
+                small {
+                    color: var(--color-additional);
+                }
+            }
+        }
+
+        .slide.section-title-2::after {
+            display: none;
+        }
+
+        .the-end-3 {
+            padding: 90px 30px 130px;
+            background-color: #1b1b1b;
+            display: flex;
+            justify-content: space-evenly;
+            gap: 25px;
+        }
+
+         .the-end-3-bio-block {
+            flex: 1 0 40%;
+            box-sizing: border-box;
+            background-color: #000000;
+            border-radius: 22px;
+            padding: 40px 30px 45px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: bold;
+
+            h2 {
+                font-family: 'Montserrat', sans-serif;
+                font-size: 30px;
+                margin-bottom: 15px;
+            }
+        }
+
+        .the-end-3-bio-block__secondary-text {
+            color: #7e7e7e;
+            font-size: 18px;
+        }
+        
+        .the-end-3__bio {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            line-height: 1;
+            font-size: 16px;
+            font-weight: bold;
+            color: #7e7e7e;
+
+            img {
+                width: 60px;
+                height: 60px;
+                object-fit: cover;
+                border-radius: 50%;
+            }
+
+            h3 {
+                margin: 0;
+                margin-bottom: 10px;
+                font-size: 20px;
+                color: #ffffff;
+            }
+        }
+
+        .the-end-3-qr-codes-blocks {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+        }
+
+        .the-end-3-qr-code-block {
+            flex: 1;
+            background-color: #ffffff;
+            color: #000000;
+            border-radius: 22px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: bold;
+
+            font-size: 18px;
+
+            img {
+                width: 100%;
+            }
+
+            a {
+                color: #000000;
+                line-height: 1;
+                text-decoration: none;
+                background-image: none;
+            }
+
+            a:hover {
+                color: #ce2424;
+            }
+        }
+    </style>
+</head>
+
+<body class="shower list">
+    <header class="caption">
+        <h1 style="margin-bottom: 10px;">Как мы web vitals оптимизировали</h1>
+        <p style="font-weight: bold; margin-bottom: 5px;">Рома Ахмадуллин</p>
+        <p>Дром</p>
+    </header>
+
+    <section id="intro" class="slide intro-slide">
+        <div class="intro-text">
+            <h2 style="margin-top: 255px; margin-bottom: 0; text-transform: uppercase;">Как мы web vitals оптимизировали</h2>
+        </div>
+        <img src="./images/codefest-logo.png" class="place t r" alt="" style="width: 100px; top: 8%; right: 6%;">
+    </section>
+
+    <section id="about-me" class="slide">
+        <div class="place l" style="padding-left: 50px;">
+            <img src="./images/roma-akmadullin.jpg" style="height: 280px; border-radius: 50%;" />
+        </div>
+        <div class="place r t" style="padding-top: 120px; padding-right: 70px;">
+            <h2>Рома Ахмадуллин</h2>
+            <ul>
+                <li class="next">лид фронтенда в Дроме</li>
+                <li class="next">контрибьючу в Доку</li>
+                <li class="next">живу во Владивостоке</li>
+                <li class="next">хожу в походы</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- <section class="slide">
+        <img src="./images/scheme-web-vitals-0.svg" class="place" style="height: 70%;" alt="">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-web-vitals-1.svg" class="place" style="height: 70%;" alt="">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-web-vitals-2.svg" class="place" style="height: 70%;" alt="">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-web-vitals-3.svg" class="place" style="height: 70%;" alt="">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-web-vitals-4.svg" class="place" style="height: 70%;" alt="">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-web-vitals-5.svg" class="place" style="height: 70%;" alt="">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-web-vitals-5-colored.svg" class="place" style="height: 70%;" alt="">
+    </section> -->
+
+    <section class="slide">
+        <h2 class="place">Web Vitals</h2>
+    </section>
+    <!-- <section class="slide">
+        <h3 class="without-margins" style="margin-bottom: 10px;">Web Vitals</h3>
+    </section> -->
+    <section class="slide">
+        <h3 class="without-margins" style="margin-bottom: 10px;">Web Vitals</h3>
+        <ul>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short">TTFB</span><span class="metric-list-item__name-full">Time To First Byte</span></span></li>
+        </ul>
+    </section>
+    <section class="slide">
+        <h3 class="without-margins" style="margin-bottom: 10px;">Web Vitals</h3>
+        <ul>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short muted">TTFB</span><span class="metric-list-item__name-full muted-little">Time To First Byte</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short">FCP</span><span class="metric-list-item__name-full">First Contentful Paint</span></span></li>
+        </ul>
+    </section>
+    <section class="slide">
+        <h3 class="without-margins" style="margin-bottom: 10px;">Web Vitals</h3>
+        <ul>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short muted">TTFB</span><span class="metric-list-item__name-full muted-little">Time To First Byte</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short muted">FCP</span><span class="metric-list-item__name-full muted-little">First Contentful Paint</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short">LCP</span><span class="metric-list-item__name-full">Largest Contentful Paint</span></span></li>
+        </ul>
+    </section>
+    <section class="slide">
+        <h3 class="without-margins" style="margin-bottom: 10px;">Web Vitals</h3>
+        <ul>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short muted">TTFB</span><span class="metric-list-item__name-full muted-little">Time To First Byte</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short muted">FCP</span><span class="metric-list-item__name-full muted-little">First Contentful Paint</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short muted">LCP</span><span class="metric-list-item__name-full muted-little">Largest Contentful Paint</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short">CLS</span><span class="metric-list-item__name-full">Cumulative Layout Shift</span></span></li>
+        </ul>
+    </section>
+    <section class="slide">
+        <h3 class="without-margins" style="margin-bottom: 10px;">Web Vitals</h3>
+        <ul>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short muted">TTFB</span><span class="metric-list-item__name-full muted-little">Time To First Byte</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short muted">FCP</span><span class="metric-list-item__name-full muted-little">First Contentful Paint</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short muted">LCP</span><span class="metric-list-item__name-full muted-little">Largest Contentful Paint</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short muted">CLS</span><span class="metric-list-item__name-full muted-little">Cumulative Layout Shift</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short">INP</span><span class="metric-list-item__name-full">Interaction to Next Paint</span></span></li>
+        </ul>
+    </section>
+    <section class="slide">
+        <h3 class="without-margins" style="margin-bottom: 10px;">Web Vitals</h3>
+        <ul>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short">TTFB</span><span class="metric-list-item__name-full">Time To First Byte</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short">FCP</span><span class="metric-list-item__name-full">First Contentful Paint</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short">LCP</span><span class="metric-list-item__name-full">Largest Contentful Paint</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short">CLS</span><span class="metric-list-item__name-full">Cumulative Layout Shift</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short">INP</span><span class="metric-list-item__name-full">Interaction to Next Paint</span></span></li>
+        </ul>
+    </section>
+    <!-- <section class="slide">
+        <h3 class="without-margins" style="margin-bottom: 10px;"><span class="accented">Core</span> Web Vitals</h3>
+        <ul>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short">TTFB</span><span class="metric-list-item__name-full">Time To First Byte</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short">FCP</span><span class="metric-list-item__name-full">First Contentful Paint</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short accented">LCP</span><span class="metric-list-item__name-full">Largest Contentful Paint</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short accented">CLS</span><span class="metric-list-item__name-full">Cumulative Layout Shift</span></span></li>
+            <li><span class="metric-list-item"><span class="metric-list-item__name-short accented">INP</span><span class="metric-list-item__name-full">Interaction to Next Paint</span></span></li>
+        </ul>
+    </section> -->
+
+    <section class="slide">
+        <img src="./images/codefest15-talk-cover.jpg" alt="" class="place rounded light-image" style="width: 80%;">
+        <a href="https://github.com/akhmadullin/codefest15" class="copyright">Web Vitals: что это и как мы их собираем?</a>
+    </section>
+
+    <section class="slide">
+        <div class="place l" style="left: 80px;">
+            <div style="font-weight: bold; font-size: 25px; color: #888888;">CodeFest 15</div>
+            <h3 class="without-margins" style="font-size: 40px;">Web Vitals: что это, как собирать?</h3>
+        </div>
+    </section>
+    <section class="slide">
+        <div class="place l" style="left: 80px;">
+            <div style="font-weight: bold; font-size: 25px; color: #888888;">CodeFest 16</div>
+            <h3 class="without-margins" style="font-size: 40px;">Web Vitals: как оптимизировать?</h3>
+        </div>
+    </section>
+
+    <section class="slide">
+        <img src="./images/drom-logo.svg" alt="" class="place" style="width: 25%;">
+    </section>
+
+    <section class="slide" style="background-color: #222222; padding: 75px 120px 0;">
+        <div class="numbers-about-company">
+            <div class="number-about-company-card number-about-company-card_red">
+                <div class="number-about-company-card__number">4 млн</div>
+                <div class="number-about-company-card__caption">человек в день <br> пользуются нашими продуктами</div>
+            </div>
+            <div class="number-about-company-card number-about-company-card_dark-gray next">
+                <div class="number-about-company-card__number">950 тыс</div>
+                <div class="number-about-company-card__caption">актуальных объявлений</div>
+            </div>
+            <div class="number-about-company-card number-about-company-card_light-gray next">
+                <div class="number-about-company-card__number">20 тыс</div>
+                <div class="number-about-company-card__caption">запросов в секунду отдаёт Дром</div>
+            </div>
+            <div class="number-about-company-card number-about-company-card_white next">
+                <div class="number-about-company-card__number">26 лет</div>
+                <div class="number-about-company-card__caption">возраст проекта</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-drom-stack-1.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-drom-stack-2.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-drom-stack-3.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-drom-stack-4.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-drom-stack-5.svg" alt="" class="place" style="width: 70%;">
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Отправная точка</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/summary-01-2024.png" alt="" class="place rounded" style="width: 80%;">
+
+        <img src="./images/january-2024.svg" alt="" class="place t r" style="width: 15%; top: 8%; right: 11%;">
+    </section>
+    <section class="slide">
+        <img src="./images/summary-01-2024.png" alt="" class="place rounded" style="width: 80%;">
+
+        <img src="./images/january-2024.svg" alt="" class="place t r" style="width: 15%; top: 8%; right: 11%;">
+        <img src="./images/arrow-final-performance-score.svg" alt="" class="place t l" style="width: 33%; top: 8.2%; left: 16%;">
+    </section>
+    <section class="slide">
+        <img src="./images/summary-01-2024.png" alt="" class="place rounded" style="width: 80%;">
+
+        <img src="./images/january-2024.svg" alt="" class="place t r" style="width: 15%; top: 8%; right: 11%;">
+        <img src="./images/arrow-final-performance-score.svg" alt="" class="place t l" style="width: 33%; top: 8.2%; left: 16%;">
+        <img src="./images/arrow-page-loading-speed.svg" alt="" class="place t l" style="width: 33%; top: 37.2%; left: 33%;">
+    </section>
+    <section class="slide">
+        <img src="./images/summary-01-2024.png" alt="" class="place rounded" style="width: 80%;">
+
+        <img src="./images/january-2024.svg" alt="" class="place t r" style="width: 15%; top: 8%; right: 11%;">
+        <img src="./images/arrow-final-performance-score.svg" alt="" class="place t l" style="width: 33%; top: 8.2%; left: 16%;">
+        <img src="./images/arrow-page-loading-speed.svg" alt="" class="place t l" style="width: 33%; top: 37.2%; left: 33%;">
+
+        <img src="./images/arrow-key-pages.svg" alt="" class="place t l" style="width: 14%; top: 29%; left: 0.5%;">
+        <img src="./images/line-slow-1.svg" alt="" class="place t l" style="width: 9%; top: 48.2%; left: 10%;">
+        <img src="./images/line-slow-2.svg" alt="" class="place t l" style="width: 9%; top: 48.2%; left: 19%;">
+        <img src="./images/line-slow-1.svg" alt="" class="place t l" style="width: 9%; top: 48.2%; left: 28%;">
+        <img src="./images/line-slow-1.svg" alt="" class="place t l" style="width: 9%; top: 48.2%; left: 37%;">
+    </section>
+
+     <section class="slide">
+        <img src="./images/screenshot-drom-bulletins-list-auto.jpg" alt="" class="place rounded light-image" style="height: 75%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-drom-bulletins-list-auto-2.jpg" alt="" class="place rounded light-image" style="height: 75%;">
+    </section>
+
+    <section class="slide">
+        <div class="lh-wrap place" style="width: 65%;">
+            <div class="lh-metrics">
+                <div class="lh-row lh-row__yellow">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">TTFB</div>
+                    <div class="lh-val">1210 ms</div>
+                    <div class="lh-thr">цель &lt; 800 ms</div>
+                    <span class="lh-badge">средне</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">FCP</div>
+                    <div class="lh-val">1690 ms</div>
+                    <div class="lh-thr">цель &lt; 1800 ms</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">LCP</div>
+                    <div class="lh-val">2250 ms</div>
+                    <div class="lh-thr">цель &lt; 2500 ms</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">CLS</div>
+                    <div class="lh-val">0.05</div>
+                    <div class="lh-thr">цель &lt; 0.1</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__yellow">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">INP</div>
+                    <div class="lh-val">467 ms</div>
+                    <div class="lh-thr">цель &lt; 200 ms</div>
+                    <span class="lh-badge">средне</span>
+                </div>
+            </div>
+        </div>
+
+        <img src="./images/bulls-list-mobile-75p.svg" alt="" class="place t l" style="height: 8%; top: 8%; left: 18%;">
+        <img src="./images/january-2024.svg" alt="" class="place t r" style="height: 8%; top: 8%; right: 18%;">
+    </section>
+    <section class="slide">
+        <div class="lh-wrap place" style="width: 65%;">
+            <div class="lh-metrics">
+                <div class="lh-row lh-row__yellow">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">TTFB</div>
+                    <div class="lh-val">1210 ms</div>
+                    <div class="lh-thr">цель &lt; 800 ms</div>
+                    <span class="lh-badge">средне</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">FCP</div>
+                    <div class="lh-val">1690 ms</div>
+                    <div class="lh-thr">цель &lt; 1800 ms</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">LCP</div>
+                    <div class="lh-val">2250 ms</div>
+                    <div class="lh-thr">цель &lt; 2500 ms</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">CLS</div>
+                    <div class="lh-val">0.05</div>
+                    <div class="lh-thr">цель &lt; 0.1</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__yellow">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">INP</div>
+                    <div class="lh-val">467 ms</div>
+                    <div class="lh-thr">цель &lt; 200 ms</div>
+                    <span class="lh-badge">средне</span>
+                </div>
+            </div>
+        </div>
+
+        <img src="./images/bulls-list-mobile-75p.svg" alt="" class="place t l" style="height: 8%; top: 8%; left: 18%;">
+        <img src="./images/january-2024.svg" alt="" class="place t r" style="height: 8%; top: 8%; right: 18%;">
+        <img src="./images/arrow-focus-on-yellow-metrics.svg" alt="" class="place l" style="width: 16%; left: 0.5%;">
+    </section>
+
+    <section class="slide slide-section-title">
+        <h2 class="place centered-slide-title">Оптимизация TTFB</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/ttfb-mem.png" alt="" class="place rounded light-image" style="height: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/ttfb-mem.png" alt="" class="place rounded" style="height: 80%;">
+        <div class="place" style="width:100%; height: 100%; background-color: hsla(48, 38%, 3%, 0.75); backdrop-filter: blur(2px);"></div>
+        <h2 class="place centered-slide-title" style="margin-top: -10px;">Поиск проблемных мест</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/ttfb-formula.svg" alt="" class="place" style="width: 70%;">
+    </section>
+
+     <section class="slide">
+        <img src="./images/screenshot-devtools-network-timing.jpg" alt="" class="place rounded" style="height: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-devtools-network-timing.jpg" alt="" class="place rounded" style="height: 70%;">
+        <img src="./images/arrow-network-issue.svg" alt="" class="place t l" style="width: 19%; top: 32%; left: 41%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-devtools-network-timing.jpg" alt="" class="place rounded" style="height: 70%;">
+        <img src="./images/arrow-network-issue.svg" alt="" class="place t l" style="width: 19%; top: 32%; left: 41%;">
+        <img src="./images/arrow-backend-issue.svg" alt="" class="place t l" style="width: 18%; top: 47%; left: 55%;">
+    </section>
+
+    <section class="slide">
+       <h3>Поиск проблемных мест на сервере</h3>
+       <ul>
+            <li class="next">профилирование</li>
+            <li class="next">мониторинг длительности исполнения проблемных фич</li>
+       </ul>
+    </section>
+
+    <section class="slide">
+       <h3>Что мы используем для профилирования?</h3>
+       <ul>
+            <li class="next">PHP — Xdebug</li>
+            <li class="next">Node.js — Pyroscope</li>
+       </ul>
+    </section>
+
+    <section class="slide">
+       <h3>Что мы используем для мониторинга?</h3>
+       <ul>
+            <li class="next">Сбор метрик — Prometheus + Victoria Metrics</li>
+            <li class="next">Мониторинг — Grafana</li>
+       </ul>
+    </section>
+
+    <section class="slide slide-section-title">
+        <h3>Оптимизация TTFB</h3>
+        <h2>Оптимизация запросов к БД</h2>
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">
+            Уменьшение запросов к БД
+        </h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-bd-optimization-1.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-bd-optimization-2.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-bd-optimization-3.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-bd-optimization-4.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-bd-optimization-5.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-bd-optimization-6.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-bd-optimization-7.svg" alt="" class="place" style="width: 70%;">
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">
+            Поиск дублей запросов к БД
+        </h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-seach-dubles-bd-queries-1.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-seach-dubles-bd-queries-2.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-seach-dubles-bd-queries-3.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-seach-dubles-bd-queries-4.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-dubli-bd-queries.jpg" alt="" class="place" style="width: 90%;">
+    </section>
+
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="TTFB"
+                start-value="1210"
+                target-value="800"
+                value-suffix="ms"
+                thresholds='{"good":800,"warning":1800}'
+                optimizations='[
+                    {"label":"Оптимизация запросов к БД","delta":-40}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide slide-section-title">
+        <h3>Оптимизация TTFB</h3>
+        <h2>Асинхронные запросы</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-one-by-one-requests-0.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-one-by-one-requests-1.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-one-by-one-requests-2.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-one-by-one-requests-3.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-one-by-one-requests-4.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-one-by-one-requests-4.svg" alt="" class="place" style="width: 70%;">
+        <img src="./images/arrow-relatively-long.svg" alt="" class="place t l" style="width: 27%; top: 15%; left: 40%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-parallel-requests.svg" alt="" class="place" style="width: 70%;">
+    </section>
+     <section class="slide">
+        <img src="./images/scheme-parallel-requests.svg" alt="" class="place" style="width: 70%;">
+        <img src="./images/arrow-fast.svg" alt="" class="place t r" style="width: 14%; top: 20%; right: 39%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-one-by-one-requests-4.svg" alt="" class="place t" style="height: 43%; top: 6%;">
+        <img src="./images/scheme-parallel-requests.svg" alt="" class="place b" style="height: 43%; bottom: 6%;">
+    </section>
+
+    <section class="slide">
+        <h3>Асинхронные запросы</h3>
+        <ul>
+            <li class="next">отобрали запросы, подходящие под параллелизацию</li>
+            <li class="next">отрефакторили код</li>
+            <li class="next">добавили подходящее кэширование</li>
+        </ul>
+    </section>
+
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="TTFB"
+                start-value="1210"
+                target-value="800"
+                value-suffix="ms"
+                thresholds='{"good":800,"warning":1800}'
+                optimizations='[
+                    {"label":"Запросы к БД","delta":-40},
+                    {"label":"Async запросы","delta":-80}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+     <section class="slide slide-section-title">
+        <h3>Оптимизация TTFB</h3>
+        <h2>Хэширование ссылок на фотографии</h2>
+    </section>
+
+    <section class="slide">
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 35%;">https://cdn.drom.ru/photo/v2/100000006/gen115.jpg</div>
+    </section>
+    <section class="slide">
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 35%;">https://cdn.drom.ru/photo/v2/<span class="accented">100000006</span>/gen115.jpg</div>
+        <img src="./images/arrow-incremental-id.svg" alt="" class="place t r" style="width: 25%; top: 15%; right: 10%;">
+    </section>
+    <section class="slide">
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 35%;">https://cdn.drom.ru/photo/v2/<span class="accented">100000006</span>/gen115.jpg</div>
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 42%;">https://cdn.drom.ru/photo/v2/<span class="accented">100000007</span>/gen115.jpg</div>
+
+        <img src="./images/arrow-incremental-id.svg" alt="" class="place t r" style="width: 25%; top: 15%; right: 10%;">
+
+        <img src="./images/plus-one.svg" alt="" class="place t r" style="width: 6%; right: 7%; top: 42%;">
+    </section>
+    <section class="slide">
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 35%;">https://cdn.drom.ru/photo/v2/<span class="accented">100000006</span>/gen115.jpg</div>
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 42%;">https://cdn.drom.ru/photo/v2/<span class="accented">100000007</span>/gen115.jpg</div>
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 49%;">https://cdn.drom.ru/photo/v2/<span class="accented">100000008</span>/gen115.jpg</div>
+
+        <img src="./images/arrow-incremental-id.svg" alt="" class="place t r" style="width: 25%; top: 15%; right: 10%;">
+
+        <img src="./images/plus-one.svg" alt="" class="place t r" style="width: 6%; right: 7%; top: 42%;">
+        <img src="./images/plus-one.svg" alt="" class="place t r" style="width: 6%; right: 7%; top: 49%;">
+    </section>
+    <section class="slide">
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 35%;">https://cdn.drom.ru/photo/v2/<span class="accented">100000006</span>/gen115.jpg</div>
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 42%;">https://cdn.drom.ru/photo/v2/<span class="accented">100000007</span>/gen115.jpg</div>
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 49%;">https://cdn.drom.ru/photo/v2/<span class="accented">100000008</span>/gen115.jpg</div>
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 56%;">https://cdn.drom.ru/photo/v2/<span class="accented">100000009</span>/gen115.jpg</div>
+
+        <img src="./images/arrow-incremental-id.svg" alt="" class="place t r" style="width: 25%; top: 15%; right: 10%;">
+
+        <img src="./images/plus-one.svg" alt="" class="place t r" style="width: 6%; right: 7%; top: 42%;">
+        <img src="./images/plus-one.svg" alt="" class="place t r" style="width: 6%; right: 7%; top: 49%;">
+        <img src="./images/plus-one.svg" alt="" class="place t r" style="width: 6%; right: 7%; top: 56%;">
+    </section>
+    <section class="slide">
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 35%;">https://cdn.drom.ru/photo/v2/<span class="accented">100000006</span>/gen115.jpg</div>
+
+        <img src="./images/arrow-incremental-id.svg" alt="" class="place t r" style="width: 25%; top: 15%; right: 10%;">
+
+        <img src="./images/drake-foo.png" alt="" class="place t r" style="width: 13%; top: 10%; right: 42%;">
+    </section>
+    <section class="slide">
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 35%;">https://cdn.drom.ru/photo/v2/<span class="accented">100000006</span>/gen115.jpg</div>
+        
+        <div class="place t" style="font-family: 'PT Mono', monospace; top: 56%;">https://cdn.drom.ru/photo/v2/<span class="accented">ty0E2fCOT</span>/gen115.jpg</div>
+
+        <img src="./images/arrow-incremental-id.svg" alt="" class="place t r" style="width: 25%; top: 15%; right: 10%;">
+        <img src="./images/arrow-hash-id.svg" alt="" class="place b r" style="width: 17%; bottom: 15%; right: 17%;">
+
+        <img src="./images/drake-foo.png" alt="" class="place t r" style="width: 13%; top: 10%; right: 42%;">
+        <img src="./images/drake-cool.png" alt="" class="place b r" style="width: 13%; bottom: 15%; right: 42%;">
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Построение хэша требует времени</h2>
+    </section>
+
+    <section class="slide">
+        <h3>Хэширование ссылки на фотографию</h3>
+        <ul class="list-without-marker">
+            <li class="next">❌&nbsp;&nbsp;расчет в рантайме — долго</li>
+            <li class="next">❌&nbsp;&nbsp;кэширование оказалось неэффективным</li>
+            <li class="next">✅&nbsp;&nbsp;хранение в документах поиска</li>
+        </ul>
+    </section>
+
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="TTFB"
+                start-value="1210"
+                target-value="800"
+                value-suffix="ms"
+                thresholds='{"good":800,"warning":1800}'
+                optimizations='[
+                    {"label":"Запросы к БД","delta":-40},
+                    {"label":"Async запросы","delta":-80},
+                    {"label":"Хэши для фото","delta":-25}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide slide-section-title">
+        <h3>Оптимизация TTFB</h3>
+        <h2>Перенос получения данных на клиент</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-drom-bulletins-list-auto.jpg" alt="" class="place rounded light-image" style="width: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-cars-list.jpg" alt="" class="place rounded light-image" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-cars-list.jpg" alt="" class="place rounded light-image" style="width: 70%;">
+        <img src="./images/arrow-important-for-seo.svg" alt="" class="place t l" style="width: 65%; top: 8%; left: 15%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-filter-fasets-0.jpg" alt="" class="place t rounded light-image" style="width: 70%; top: 6.3%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-filter-fasets-1.jpg" alt="" class="place t rounded light-image" style="width: 70%; top: 6.3%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-filter-fasets-1.jpg" alt="" class="place t rounded light-image" style="width: 70%; top: 6.3%;">
+        <img src="./images/arrow-filter-fasets.svg" alt="" class="place b r" style="width: 29%; bottom: 27%; right: 19%;">
+        <img src="./images/line-faset-1.svg" alt="" class="place b r" style="width: 4%; bottom: 43%; right: 41%;">
+        <img src="./images/line-faset-2.svg" alt="" class="place b r" style="width: 4%; bottom: 25%; right: 48%;">
+        <img src="./images/line-faset-3.svg" alt="" class="place t l" style="width: 6%; top: 23%; left: 23%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-async-fasets-as-was-1.svg" alt="" class="place t" style="width: 60%; top: 14%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-async-fasets-as-was-2.svg" alt="" class="place t" style="width: 60%; top: 14%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-async-fasets-as-was-3.svg" alt="" class="place t" style="width: 60%; top: 14%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-async-fasets-as-was-4.svg" alt="" class="place t" style="width: 60%; top: 14%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-async-fasets-as-was-5.svg" alt="" class="place t" style="width: 60%; top: 14%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-async-fasets-as-is-1.svg" alt="" class="place t" style="width: 60%; top: 14%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-async-fasets-as-is-2.svg" alt="" class="place t" style="width: 60%; top: 14%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-async-fasets-as-is-3.svg" alt="" class="place t" style="width: 60%; top: 14%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-async-fasets-as-is.svg" alt="" class="place t" style="width: 60%; top: 14%;">
+    </section>
+
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="TTFB"
+                start-value="1210"
+                target-value="800"
+                value-suffix="ms"
+                thresholds='{"good":800,"warning":1800}'
+                optimizations='[
+                    {"label":"Запросы к БД","delta":-40},
+                    {"label":"Async запросы","delta":-80},
+                    {"label":"Хэши для фото","delta":-25},
+                    {"label":"Фасеты с фронта","delta":-150}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title" style="line-height: 1.4;">Мощно!</h2>
+    </section>
+    <section class="slide">
+        <h2 class="place centered-slide-title" style="line-height: 1.4;">🤔 Что ещё можем перенести <br> на клиент?</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-subscriptions-counter-1.jpg" alt="" class="place l rounded" style="height: 70%; left: 20%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-subscriptions-counter-1.jpg" alt="" class="place l rounded" style="height: 70%; left: 20%;">
+        <img src="./images/line-5.svg" alt="" class="place t l" style="width: 3%; top: 40%; left: 32%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-subscriptions-counter-1.jpg" alt="" class="place l rounded" style="height: 70%; left: 20%;">
+        <img src="./images/line-5.svg" alt="" class="place t l" style="width: 3%; top: 40%; left: 32%;">
+        <img src="./images/arrow-amount-of-new-bulls-in-subscription.svg" alt="" class="place t l" style="width: 20%; top: 21%; left: 0%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-subscriptions-counter-1.jpg" alt="" class="place l rounded" style="height: 70%; left: 20%;">
+        <img src="./images/screenshot-subscriptions-counter-2.jpg" alt="" class="place r rounded" style="height: 70%; right: 20%;">
+        <img src="./images/line-5.svg" alt="" class="place t l" style="width: 3%; top: 40%; left: 32%;">
+        <img src="./images/arrow-amount-of-new-bulls-in-subscription.svg" alt="" class="place t l" style="width: 20%; top: 21%; left: 0%;">
+        <img src="./images/arrow-5.svg" alt="" class="place t l" style="width: 10%; top: 39%; left: 45%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-subscriptions-count-time-1.png" alt="" class="place rounded" style="height: 80%; left: 62%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-subscriptions-count-time-1.png" alt="" class="place rounded" style="height: 80%; left: 62%;">
+        <img src="./images/arrow-subscriptions-count-too-long.svg" alt="" class="place t l" style="width: 30%; top: 32%; left: 5%;">
+    </section>
+
+     <!-- <section class="slide">
+        <img src="./images/screenshot-filter-fasets-1.jpg" alt="" class="place t rounded light-image" style="width: 70%; top: 6.3%;">
+        <img src="./images/arrow-filter-fasets.svg" alt="" class="place b r" style="width: 29%; bottom: 27%; right: 19%;">
+        <img src="./images/line-faset-1.svg" alt="" class="place b r" style="width: 4%; bottom: 43%; right: 41%;">
+        <img src="./images/line-faset-2.svg" alt="" class="place b r" style="width: 4%; bottom: 25%; right: 48%;">
+        <img src="./images/line-faset-3.svg" alt="" class="place t l" style="width: 6%; top: 23%; left: 23%;">
+    </section> -->
+    <section class="slide">
+        <img src="./images/screenshot-filter-fasets-1.jpg" alt="" class="place t rounded light-image" style="width: 70%; top: 6.3%;">
+        <img src="./images/arrow-filter-fasets.svg" alt="" class="place b r" style="width: 29%; bottom: 27%; right: 19%;">
+        <img src="./images/line-faset-1.svg" alt="" class="place b r" style="width: 4%; bottom: 43%; right: 41%;">
+        <img src="./images/line-faset-2.svg" alt="" class="place b r" style="width: 4%; bottom: 25%; right: 48%;">
+        <img src="./images/line-faset-3.svg" alt="" class="place t l" style="width: 6%; top: 23%; left: 23%;">
+
+        <img src="./images/mem-think-about.png" alt="" class="place b l" style="width: 25%; bottom: 0%; left: 0%;">
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title" style="line-height: 1.2;">Перенесли получение <br> счётчика подписок на фронтенд</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-header-data-time-111.png" alt="" class="place rounded" style="width: 70%;">
+    </section>
+
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="TTFB"
+                start-value="1210"
+                target-value="800"
+                value-suffix="ms"
+                thresholds='{"good":800,"warning":1800}'
+                optimizations='[
+                    {"label":"Запросы к БД","delta":-40},
+                    {"label":"Async запросы","delta":-80},
+                    {"label":"Хэши для фото","delta":-25},
+                    {"label":"Фасеты с фронта","delta":-150},
+                    {"label":"Счетчик подписок","delta":-0}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Почему TTFB не уменьшился?</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-user-auth-percent.svg" alt="" class="place" style="width: 70%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-user-auth-percent-2.svg" alt="" class="place" style="width: 70%;">
+    </section>
+
+    <section class="slide" style="background: linear-gradient(to bottom, #666 0%, #0f214e 100%)">
+        <blockquote class="place t r sensey-quote" style="color: white;
+        width: 69%;
+        position: absolute;
+        top: 18%;
+        font-size: 1.1em;
+        margin-right: -10px;
+        ">
+            Оптимизируйте в первую очередь широкоиспользуемые фичи.
+        </blockquote>
+        <!-- <img src="./images/mem-sensey-without-bg-2.png" alt="" class="place l b" style="height: 65%; bottom: 5%; filter: drop-shadow(4px -4px 100px #1e3c87)"> -->
+        <img src="./images/mem-sensey-without-bg-2.png" alt="" class="place l b" style="height: 65%; bottom: 5%;">
+    </section>
+
+    <section class="slide slide-section-title">
+        <h3>Оптимизация TTFB</h3>
+        <h2>Оптимизация передачи данных с бэкенда на фронтенд</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-inject-data-1.svg" alt="" class="place" style="height: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-inject-data-2.svg" alt="" class="place" style="height: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-inject-data-3.svg" alt="" class="place" style="height: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-inject-data-4.svg" alt="" class="place" style="height: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-inject-data-5.svg" alt="" class="place" style="height: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-inject-data-6.svg" alt="" class="place" style="height: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-inject-data-7.svg" alt="" class="place" style="height: 80%;">
+    </section>
+
+    <section class="slide">
+    <pre class="place t l" style="top: 21%; left: 29%;">
+    <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">script</span> 
+            <span class="hljs-attribute">type</span>="<span class="hljs-string">text/javascript</span></span>"
+            <span class="hljs-attribute">src</span>="<span class="hljs-string">module-a.js</span></span>"
+            <span class="hljs-attribute">data-module</span>="<span class="hljs-string">module-a</span></span>"
+            <span class="hljs-attribute">data-module-data</span>="<span class="hljs-string">&lt;MODULE_DATA&gt;</span>"
+        &gt;
+        &lt;/<span class="hljs-selector-tag">script</span>&gt;
+    </code>
+    </pre>
+    </section>
+    <section class="slide">
+    <pre class="place t l" style="top: 21%; left: 29%;">
+    <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">script</span> 
+            <span class="hljs-attribute">type</span>="<span class="hljs-string">text/javascript</span></span>"
+            <span class="hljs-attribute">src</span>="<span class="hljs-string">module-a.js</span></span>"
+            <span class="hljs-attribute">data-module</span>="<span class="hljs-string">module-a</span></span>"
+            <span class="hljs-attribute">data-module-data</span>="<span class="hljs-string">&lt;MODULE_DATA&gt;</span>"
+        &gt;
+        &lt;/<span class="hljs-selector-tag">script</span>&gt;
+    </code>
+    </pre>
+        <img src="./images/arrow-encoding-was-needed.svg" alt="" class="place t r" style="width: 33%; top: 25%; right: 1%;">
+    </section>
+    <section class="slide">
+    <pre class="place t l" style="top: 21%; left: 29%;">
+    <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">script</span> 
+            <span class="hljs-attribute">type</span>="<span class="hljs-string">text/javascript</span></span>"
+            <span class="hljs-attribute">src</span>="<span class="hljs-string">module-a.js</span></span>"
+            <span class="hljs-attribute">data-module</span>="<span class="hljs-string">module-a</span></span>"
+            <span class="hljs-attribute">data-module-data</span>="<span class="hljs-string">&lt;MODULE_DATA&gt;</span>"
+        &gt;
+        &lt;/<span class="hljs-selector-tag">script</span>&gt;
+    </code>
+    </pre>
+        <img src="./images/arrow-encoding-was-needed.svg" alt="" class="place t r" style="width: 33%; top: 25%; right: 1%;">
+        <img src="./images/arrow-encoding-was-long.svg" alt="" class="place t r" style="width: 47%; top: 59.2%; right: 9.5%;">
+    </section>
+    <section class="slide">
+    <pre class="place t l" style="top: 21%; left: 29%;">
+    <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">script</span> 
+            <span class="hljs-attribute">type</span>="<span class="hljs-string">text/javascript</span></span>"
+            <span class="hljs-attribute">src</span>="<span class="hljs-string">module-a.js</span></span>"
+            <span class="hljs-attribute">data-module</span>="<span class="hljs-string">module-a</span></span>"
+            <span class="hljs-attribute">data-module-data</span>="<span class="hljs-string">&lt;MODULE_DATA&gt;</span>"
+        &gt;
+        &lt;/<span class="hljs-selector-tag">script</span>&gt;
+    </code>
+    </pre>
+    </section>
+
+    <section class="slide">
+    <pre class="place t l" style="top: 21%; left: 29%;">
+    <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">script</span> 
+            <span class="hljs-attribute">type</span>="<span class="hljs-string">application/json</span></span>"
+            <span class="hljs-attribute">data-module</span>="<span class="hljs-string">module-a</span></span>"
+        &gt;
+            <span class="hljs-string">&lt;MODULE_DATA&gt;</span>
+        &lt;/<span class="hljs-selector-tag">script</span>&gt;
+    </code>
+    </pre>
+    </section>
+    <section class="slide">
+    <pre class="place t l" style="top: 21%; left: 29%;">
+    <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">script</span> 
+            <span class="hljs-attribute">type</span>="<span class="hljs-string">application/json</span></span>"
+            <span class="hljs-attribute">data-module</span>="<span class="hljs-string">module-a</span></span>"
+        &gt;
+            <span class="hljs-string">&lt;MODULE_DATA&gt;</span>
+        &lt;/<span class="hljs-selector-tag">script</span>&gt;
+    </code>
+    </pre>
+        <img src="./images/arrow-move-modula-data-to-separate-script.svg" alt="" class="place t l" style="width: 35%; top: 35%; left: 0%;">
+    </section>
+    <section class="slide">
+    <pre class="place t l" style="top: 21%; left: 29%;">
+    <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">script</span> 
+            <span class="hljs-attribute">type</span>="<span class="hljs-string">application/json</span></span>"
+            <span class="hljs-attribute">data-module</span>="<span class="hljs-string">module-a</span></span>"
+        &gt;
+            <span class="hljs-string">&lt;MODULE_DATA&gt;</span>
+        &lt;/<span class="hljs-selector-tag">script</span>&gt;
+    </code>
+    </pre>
+        <img src="./images/arrow-move-modula-data-to-separate-script.svg" alt="" class="place t l" style="width: 35%; top: 35%; left: 0%;">
+        <img src="./images/arrow-encoding-is-not-needed-anymore.svg" alt="" class="place b r" style="width: 37%; bottom: 24%; right: 9%;">
+    </section>
+
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="TTFB"
+                start-value="1210"
+                target-value="800"
+                value-suffix="ms"
+                thresholds='{"good":800,"warning":1800}'
+                optimizations='[
+                    {"label":"Запросы к БД","delta":-40},
+                    {"label":"Async запросы","delta":-80},
+                    {"label":"Хэши для фото","delta":-25},
+                    {"label":"Фасеты с фронта","delta":-150},
+                    {"label":"Контракт с фронтом","delta":-40}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide slide-section-title">
+        <h3>Оптимизация TTFB</h3>
+        <h2>Обновление железа</h2>
+    </section>
+
+     <section class="slide">
+        <h3>Обновление железа поискового движка</h3>
+        <ul>
+            <li class="next">latency на высоких перцентилях стал менее разрозненным</li>
+            <li class="next">на TTFB эффекта не дало – latency изначально был невысок</li>
+        </ul>
+    </section>
+
+    <section class="slide">
+        <h3>Обновление железа SSR</h3>
+        <ul>
+            <li class="next">latency стал меньше на 25% (60ms -> 45ms)</li>
+            <li class="next">на TTFB так же отразилось</li>
+        </ul>
+    </section>
+
+     <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="TTFB"
+                start-value="1210"
+                target-value="800"
+                value-suffix="ms"
+                thresholds='{"good":800,"warning":1800}'
+                optimizations='[
+                    {"label":"Запросы к БД","delta":-40},
+                    {"label":"Async запросы","delta":-80},
+                    {"label":"Хэши для фото","delta":-25},
+                    {"label":"Фасеты с фронта","delta":-150},
+                    {"label":"Контракт с фронтом","delta":-40},
+                    {"label":"Обновление железа","delta":-30}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide slide-section-title">
+        <h3>Оптимизация TTFB</h3>
+        <h2>Обновление зависимостей</h2>
+    </section>
+    
+    <section class="slide">
+        <h3>Обновление PHP</h3>
+        <ul>
+            <li class="next">переехали c PHP 7.4 на PHP 8.1</li>
+            <li class="next">latency формирования страниц уменьшился на 50ms</li>
+        </ul>
+    </section>
+
+    <section class="slide">
+        <h3>Обновление Node.js</h3>
+        <ul>
+            <li class="next">переехали c Node.js 20 на Node.js 24</li>
+            <li class="next">latency ответа SSR уменьшился на 24% (10-15ms)</li>
+        </ul>
+    </section>
+
+   <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="TTFB"
+                start-value="1210"
+                target-value="800"
+                value-suffix="ms"
+                thresholds='{"good":800,"warning":1800}'
+                optimizations='[
+                    {"label":"Запросы к БД","delta":-40},
+                    {"label":"Async запросы","delta":-80},
+                    {"label":"Хэши для фото","delta":-25},
+                    {"label":"Фасеты с фронта","delta":-150},
+                    {"label":"Контракт с фронтом","delta":-40},
+                    {"label":"Обновление железа","delta":-30},
+                    {"label":"Обновление зависимостей","delta":-76}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                chart-height="350px"
+                metric-title="TTFB"
+                start-value="1210"
+                target-value="800"
+                value-suffix="ms"
+                thresholds='{"good":800,"warning":1800}'
+                optimizations='[
+                    {"label":"Запросы к БД","delta":-40},
+                    {"label":"Async запросы","delta":-80},
+                    {"label":"Хэши для фото","delta":-25},
+                    {"label":"Фасеты с фронта","delta":-150},
+                    {"label":"Контракт с фронтом","delta":-40},
+                    {"label":"Обновление железа","delta":-30},
+                    {"label":"Обновление зависимостей","delta":-76}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide slide-section-title">
+        <h2 class="place centered-slide-title">Оптимизация LCP</h2>
+    </section>
+
+   <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="LCP"
+                start-value="2250"
+                target-value="2500"
+                value-suffix="ms"
+                thresholds='{"good":2500,"warning":4000}'
+                optimizations='[
+                    {"label":"Оптимизация TTFB","delta":-441}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide slide-section-title">
+        <h3>Оптимизация LCP</h3>
+        <h2>Прелоад изображений</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-bulls-list-mobile-for-lcp.jpg" class="place r rounded light-image" style="right: 10%; height: 80%;" alt="">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-bulls-list-mobile-for-lcp.jpg" class="place r rounded light-image" style="right: 10%; height: 80%;" alt="">
+        <img src="./images/line-lcp-border.svg" class="place t r" style="top: 27%; right: 18.3%; width: 17.3%;" alt="">
+        <img src="./images/arrow-lcp.svg" class="place t r" style="top: 27%; right: 38%; width: 29%;" alt="">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-bulls-list-mobile-for-lcp-2.jpg" class="place r rounded light-image" style="right: 10%; height: 80%;" alt="">
+        <img src="./images/line-lcp-border.svg" class="place t r" style="top: 27%; right: 18.3%; width: 17.3%;" alt="">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-bulls-list-mobile-for-lcp.jpg" class="place r rounded light-image" style="right: 10%; height: 80%;" alt="">
+        <img src="./images/line-lcp-border.svg" class="place t r" style="top: 27%; right: 18.3%; width: 17.3%;" alt="">
+        <img src="./images/arrow-added-preload.svg" class="place t r" style="top: 22%; right: 38%; width: 20%;" alt="">
+        <pre class="place t l" style="top: 18%; left: 3%; font-size: 0.8em;">
+        <code class="language-xml hljs" data-highlighted="yes">
+            &lt;<span class="hljs-selector-tag">link</span> 
+                <span class="hljs-attribute">href</span>="<span class="hljs-string">x1.jpg</span></span>"
+                <span class="hljs-attribute">rel</span>="<span class="hljs-string">preload</span></span>"
+                <span class="hljs-attribute">as</span>="<span class="hljs-string">image</span></span>"
+                <span class="hljs-attribute">imagesrcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+                <span class="hljs-attribute">fetchpriority</span>="<span class="hljs-string">high</span>"
+            &gt;
+        </code>
+        </pre>
+    </section>
+
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="LCP"
+                start-value="2250"
+                target-value="2500"
+                value-suffix="ms"
+                thresholds='{"good":2500,"warning":4000}'
+                optimizations='[
+                    {"label":"Оптимизация TTFB","delta":-441},
+                    {"label":"Прелоад фото","delta":-130}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+     <section class="slide slide-section-title">
+        <h3>Оптимизация LCP</h3>
+        <h2>CDN</h2>
+    </section>
+
+    <section class="slide">
+        <h3>CDN</h3>
+        <ul>
+            <li class="next">CDN уже был</li>
+            <li class="next">попробовали использовать разных CDN-провайдеров</li>
+            <li class="next">остановились на двух</li>
+        </ul>
+    </section>
+
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="LCP"
+                start-value="2250"
+                target-value="2500"
+                value-suffix="ms"
+                thresholds='{"good":2500,"warning":4000}'
+                optimizations='[
+                    {"label":"Оптимизация TTFB","delta":-441},
+                    {"label":"Прелоад фото","delta":-130},
+                    {"label":"CDN","delta":-319}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                chart-height="350px"
+                metric-title="LCP"
+                start-value="2250"
+                target-value="2500"
+                value-suffix="ms"
+                thresholds='{"good":2500,"warning":4000}'
+                optimizations='[
+                    {"label":"Оптимизация TTFB","delta":-441},
+                    {"label":"Прелоад фото","delta":-130},
+                    {"label":"CDN","delta":-319}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide slide-section-title">
+        <h2 class="place centered-slide-title">Оптимизация INP</h2>
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Размер DOM-дерева</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-bulls-list-layout-desktop.jpg" alt="" class="place l t rounded light-image" style="width: 40%; top: 28%; left: 13%;">
+        <img src="./images/screenshot-bulls-list-layout-mobile.jpg" alt="" class="place r t rounded light-image" style="width: 20%; top: 28%; right: 16%;">
+
+        <img src="./images/desktop.svg" alt="" class="place t l" style="width: 12%; top: 18%; left: 27%;">
+        <img src="./images/mobile.svg" alt="" class="place t l" style="width: 10.8%; top: 18%; left: 68%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-domsize-before-1.svg" alt="" class="place" style="width: 55%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-domsize-before-2.svg" alt="" class="place" style="width: 55%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-domsize-before-3.svg" alt="" class="place" style="width: 55%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-domsize-before-4.svg" alt="" class="place" style="width: 55%;">
+    </section>
+
+    <section class="slide slide-section-title">
+        <h3>Оптимизация INP</h3>
+        <h2>Уменьшение DOM-size</h2>
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Нативный lazy-лоадинг картинок</h2>
+    </section>
+
+    <section class="slide">
+        <pre class="place t l" style="top: 7%; left: 10%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">img</span> 
+            <span class="hljs-attribute">data-lazy</span>="<span class="hljs-string">true</span>"
+            <span class="hljs-attribute">data-srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">data-src</span>="<span class="hljs-string">x1.jpg</span>"
+        /&gt;
+        </code>
+        </pre>
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="top: 7%; left: 10%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">img</span> 
+            <span class="hljs-attribute">data-lazy</span>="<span class="hljs-string">true</span>"
+            <span class="hljs-attribute">data-srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">data-src</span>="<span class="hljs-string">x1.jpg</span>"
+        /&gt;
+        </code>
+        </pre>
+
+        <img src="./images/intersection-observer.svg" alt="" class="place t r" style="width: 20%; right: 5%; top: 20%;">
+        <img src="./images/arrow-3.svg" alt="" class="place t r" style="width: 9%; right: 26%; top: 28%;">
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="top: 7%; left: 10%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">img</span> 
+            <span class="hljs-attribute">data-lazy</span>="<span class="hljs-string">true</span>"
+            <span class="hljs-attribute">data-srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">data-src</span>="<span class="hljs-string">x1.jpg</span>"
+            <span class="hljs-attribute">srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">src</span>="<span class="hljs-string">x1.jpg</span>"
+        /&gt;
+        </code>
+        </pre>
+
+        <img src="./images/intersection-observer.svg" alt="" class="place t r" style="width: 20%; right: 5%; top: 20%;">
+        <img src="./images/arrow-3.svg" alt="" class="place t r" style="width: 9%; right: 26%; top: 28%;">
+        <img src="./images/arrow-4.svg" alt="" class="place t r" style="width: 17%; right: 26%; top: 37%;">
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="top: 7%; left: 10%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">img</span> 
+            <span class="hljs-attribute">data-lazy</span>="<span class="hljs-string">true</span>"
+            <span class="hljs-attribute">data-srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">data-src</span>="<span class="hljs-string">x1.jpg</span>"
+            <span class="hljs-attribute">srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">src</span>="<span class="hljs-string">x1.jpg</span>"
+        /&gt;
+        &lt;<span class="hljs-selector-tag">noscript</span>&gt;
+            &lt;<span class="hljs-selector-tag">img</span> 
+                <span class="hljs-attribute">srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+                <span class="hljs-attribute">src</span>="<span class="hljs-string">x1.jpg</span>"
+            /&gt;
+        &lt;<span class="hljs-selector-tag">/noscript</span>&gt;
+        </code>
+        </pre>
+
+        <img src="./images/intersection-observer.svg" alt="" class="place t r" style="width: 20%; right: 5%; top: 20%;">
+        <img src="./images/arrow-3.svg" alt="" class="place t r" style="width: 9%; right: 26%; top: 28%;">
+        <img src="./images/arrow-4.svg" alt="" class="place t r" style="width: 17%; right: 26%; top: 37%;">
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="top: 7%; left: 10%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">img</span> 
+            <span class="hljs-attribute">data-lazy</span>="<span class="hljs-string">true</span>"
+            <span class="hljs-attribute">data-srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">data-src</span>="<span class="hljs-string">x1.jpg</span>"
+            <span class="hljs-attribute">srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">src</span>="<span class="hljs-string">x1.jpg</span>"
+        /&gt;
+        &lt;<span class="hljs-selector-tag">noscript</span>&gt;
+            &lt;<span class="hljs-selector-tag">img</span> 
+                <span class="hljs-attribute">srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+                <span class="hljs-attribute">src</span>="<span class="hljs-string">x1.jpg</span>"
+            /&gt;
+        &lt;<span class="hljs-selector-tag">/noscript</span>&gt;
+        </code>
+        </pre>
+
+        <img src="./images/intersection-observer.svg" alt="" class="place t r" style="width: 20%; right: 5%; top: 20%;">
+        <img src="./images/arrow-3.svg" alt="" class="place t r" style="width: 9%; right: 26%; top: 28%;">
+        <img src="./images/arrow-4.svg" alt="" class="place t r" style="width: 17%; right: 26%; top: 37%;">
+
+        <img src="./images/arrow-fallback.svg" alt="" class="place t r" style="width: 21%; right: 15%; top: 64%;">
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="top: 7%; left: 10%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">img</span> 
+            <span class="hljs-attribute">data-lazy</span>="<span class="hljs-string">true</span>"
+            <span class="hljs-attribute">data-srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">data-src</span>="<span class="hljs-string">x1.jpg</span>"
+            <span class="hljs-attribute">srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">src</span>="<span class="hljs-string">x1.jpg</span>"
+        /&gt;
+        &lt;<span class="hljs-selector-tag">noscript</span>&gt;
+            &lt;<span class="hljs-selector-tag">img</span> 
+                <span class="hljs-attribute">srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+                <span class="hljs-attribute">src</span>="<span class="hljs-string">x1.jpg</span>"
+            /&gt;
+        &lt;<span class="hljs-selector-tag">/noscript</span>&gt;
+        </code>
+        </pre>
+
+        <img src="./images/intersection-observer.svg" alt="" class="place t r" style="width: 20%; right: 5%; top: 20%;">
+        <img src="./images/arrow-3.svg" alt="" class="place t r" style="width: 9%; right: 26%; top: 28%;">
+        <img src="./images/arrow-4.svg" alt="" class="place t r" style="width: 17%; right: 26%; top: 37%;">
+
+        <img src="./images/arrow-fallback.svg" alt="" class="place t r" style="width: 21%; right: 15%; top: 64%;">
+
+        <div class="place" style="width:100%; height: 100%; background-color: hsla(48, 38%, 3%, 0.55); backdrop-filter: blur(2px);"></div>
+        <h2 class="place centered-slide-title" style="margin-top: -10px;">Три элемента вместо одного</h2>
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title"><code>loading="lazy"</code></h2>
+    </section>
+
+    <section class="slide">
+        <pre class="place t l" style="top: 23%; left: 28%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">img</span> 
+            <span class="hljs-attribute">srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">src</span>="<span class="hljs-string">x1.jpg</span>"
+        /&gt;
+        </code>
+        </pre>
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="top: 23%; left: 28%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">img</span> 
+            <span class="hljs-attribute">srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">src</span>="<span class="hljs-string">x1.jpg</span>"
+            <span class="hljs-attribute">loading</span>="<span class="hljs-string">lazy</span>"
+        /&gt;
+        </code>
+        </pre>
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="top: 23%; left: 28%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">img</span> 
+            <span class="hljs-attribute">srcset</span>="<span class="hljs-string">x1.jpg 1x, x2.jpg 2x</span>"
+            <span class="hljs-attribute">src</span>="<span class="hljs-string">x1.jpg</span>"
+            <span class="hljs-attribute">loading</span>="<span class="hljs-string">lazy</span>"
+        /&gt;
+        </code>
+        </pre>
+
+        <img src="./images/arrow-browser-lazy-loading.svg" alt="" class="place b r" style="width: 32%; bottom: 34%; right: 11%;">
+    </section>
+
+    <section class="slide">
+        <h3>Нативный lazy-лоадинг</h3>
+        <ul>
+            <li class="next">изучили поддержку (Baseline 2023)</li>
+            <li class="next">изучили отличия поведение от JavaScript-решения</li>
+            <li class="next">поресечили: кто из крупных сайтов использует натив</li>
+            <li class="next">внедрили у себя</li>
+        </ul>
+    </section>
+
+    <!-- <section class="slide slide-with-dom-size-table">
+        <table>
+            <thead>
+                <th class="fixed-width-column left-align">Метрика</th>
+                <th class="fixed-width-column">Было</th>
+                <th class="fixed-width-column">Стало</th>
+                <th class="fixed-width-column">Разница</th>
+                <th class="fixed-width-column">Разница, %</th>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="fixed-width-column left-align">DOM-size, шт</td>
+                    <td class="fixed-width-column">3980</td>
+                    <td class="fixed-width-column">2907</td>
+                    <td class="fixed-width-column">1073</td>
+                    <td class="fixed-width-column">27</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+    <section class="slide slide-with-dom-size-table">
+        <table>
+            <thead>
+                <th class="fixed-width-column left-align">Метрика</th>
+                <th class="fixed-width-column">Было</th>
+                <th class="fixed-width-column">Стало</th>
+                <th class="fixed-width-column">Разница</th>
+                <th class="fixed-width-column">Разница, %</th>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="fixed-width-column left-align">DOM-size, шт</td>
+                    <td class="fixed-width-column">3980</td>
+                    <td class="fixed-width-column">2907</td>
+                    <td class="fixed-width-column">1073</td>
+                    <td class="fixed-width-column">27</td>
+                </tr>
+                <tr>
+                    <td class="fixed-width-column left-align">TBT, мс</td>
+                    <td class="fixed-width-column">4040</td>
+                    <td class="fixed-width-column">3460</td>
+                    <td class="fixed-width-column">580</td>
+                    <td class="fixed-width-column">14</td>
+                </tr>
+            </tbody>
+        </table>
+    </section> -->
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Inline svg ➡️ внешние файлы</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-inline-svg.jpg" alt="" class="place rounded l light-image" style="width: 55%; left: 5%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-inline-svg.jpg" alt="" class="place rounded l light-image" style="width: 55%; left: 5%;">
+        <img src="./images/line-4.svg" alt="" class="place t l" style="width: 3%; top: 26.6%; left: 56.4%;">
+        <img src="./images/line-4.svg" alt="" class="place t l" style="width: 3%; top: 54%; left: 56.4%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-inline-svg.jpg" alt="" class="place rounded l light-image" style="width: 55%; left: 5%;">
+        <img src="./images/line-4.svg" alt="" class="place t l" style="width: 3%; top: 26.6%; left: 56.4%;">
+        <img src="./images/line-4.svg" alt="" class="place t l" style="width: 3%; top: 54%; left: 56.4%;">
+        <img src="./images/screenshot-inline-svg-svg.jpg" alt="" class="place rounded t r light-image" style="width: 26%; top: 16%; right: 5%;">
+        <img src="./images/arrow-two-inline-svgs.svg" alt="" class="place t r" style="height: 32%; top: 22%; right: 31%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-inline-svg.jpg" alt="" class="place rounded l light-image" style="width: 55%; left: 5%;">
+        <img src="./images/line-4.svg" alt="" class="place t l" style="width: 3%; top: 26.6%; left: 56.4%;">
+        <img src="./images/line-4.svg" alt="" class="place t l" style="width: 3%; top: 54%; left: 56.4%;">
+        <img src="./images/screenshot-inline-svg-svg.jpg" alt="" class="place rounded t r light-image" style="width: 26%; top: 16%; right: 5%;">
+        <img src="./images/arrow-two-inline-svgs.svg" alt="" class="place t r" style="height: 32%; top: 22%; right: 31%;">
+        <img src="./images/minus-dom-size-increase.svg" alt="" class="place b r" style="height: 7%; bottom: 49%; right: 8%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-inline-svg.jpg" alt="" class="place rounded l light-image" style="width: 55%; left: 5%;">
+        <img src="./images/line-4.svg" alt="" class="place t l" style="width: 3%; top: 26.6%; left: 56.4%;">
+        <img src="./images/line-4.svg" alt="" class="place t l" style="width: 3%; top: 54%; left: 56.4%;">
+        <img src="./images/screenshot-inline-svg-svg.jpg" alt="" class="place rounded t r light-image" style="width: 26%; top: 16%; right: 5%;">
+        <img src="./images/arrow-two-inline-svgs.svg" alt="" class="place t r" style="height: 32%; top: 22%; right: 31%;">
+        <img src="./images/minus-dom-size-increase.svg" alt="" class="place b r" style="height: 7%; bottom: 49%; right: 8%;">
+        <img src="./images/minus-cache.svg" alt="" class="place b r" style="height: 7%; bottom: 43%; right: 3.6%;">
+    </section>
+
+    <section class="slide">
+        <pre class="place t l" style="top: 31%;left: 17%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">svg</span>&gt;
+            ...
+        &lt;<span class="hljs-selector-tag">/svg</span>&gt;
+        </code>
+        </pre>
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="top: 31%;left: 17%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">svg</span>&gt;
+            ...
+        &lt;<span class="hljs-selector-tag">/svg</span>&gt;
+        </code>
+        </pre>
+
+        <pre class="place t r" style="top: 15%;right: 21%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">img</span> <span class="hljs-attribute">src</span>="<span class="hljs-string">icon.svg</span>" /&gt;
+        </code>
+        </pre>
+
+        <img src="./images/arrow-7.svg" alt="" class="place t l" style="width: 12%; top: 29%; left: 33%;">
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="top: 31%;left: 17%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">svg</span>&gt;
+            ...
+        &lt;<span class="hljs-selector-tag">/svg</span>&gt;
+        </code>
+        </pre>
+
+        <pre class="place t r" style="top: 15%;right: 21%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">img</span> <span class="hljs-attribute">src</span>="<span class="hljs-string">icon.svg</span>" /&gt;
+        </code>
+        </pre>
+
+
+        <pre class="place t r" style="top: 47%;right: 10%;">
+        <code class="language-css hljs">
+        .icon-button {
+            mask-image: url(icon.svg);
+            background-color: gray;
+        }
+        </code>
+        </pre>
+
+        <img src="./images/arrow-7.svg" alt="" class="place t l" style="width: 12%; top: 29%; left: 33%;">
+        <img src="./images/arrow-8.svg" alt="" class="place t l" style="width: 12%; top: 54%; left: 33%;">
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Виртуализация галереи</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-bull-list-gallery-1.jpg" alt="" class="place rounded l light-image" style="height: 70%; left: 15%;">
+    </section>
+     <section class="slide">
+        <img src="./images/screenshot-bull-list-gallery-1.jpg" alt="" class="place rounded l light-image" style="height: 70%; left: 15%;">
+        <img src="./images/screenshot-bull-list-gallery-2.jpg" alt="" class="place rounded r light-image" style="height: 70%; right: 15%;">
+        <img src="./images/arrow-scrolling-is-able.svg" alt="" class="place b" style="width: 20%; bottom: 28%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-bull-list-gallery-1.jpg" alt="" class="place rounded l light-image" style="height: 70%; left: 15%;">
+        <img src="./images/screenshot-bull-list-gallery-2.jpg" alt="" class="place rounded r light-image" style="height: 70%; right: 15%;">
+        <img src="./images/arrow-scrolling-is-able.svg" alt="" class="place b" style="width: 20%; bottom: 28%;">
+        <img src="./images/show-all-photos-from-bull.svg" alt="" class="place b" style="width: 20%; top: 23%;">
+    </section>
+
+    <section class="slide">
+        <h3>Галерея фотографий</h3>
+        <ul>
+            <li class="next">
+                <span class="bold accented">20</span> объявлений на странице поиска
+            </li>
+            <li class="next">
+                <span class="bold accented">8</span> фото в объявлении — медиана
+            </li>
+            <li class="next">
+                <span class="bold accented">42</span> фото в объявлении — максимум для загрузки
+            </li>
+            <li class="next">
+                <span class="bold accented">160</span> фото на странице поиска — медиана
+            </li>
+            <li class="next">
+                <span class="bold accented">840</span> фото на странице поиска — максимум
+            </li>
+        </ul>
+    </section>
+    <section class="slide">
+        <h3>Галерея фотографий</h3>
+        <ul>
+            <li>
+                <span class="bold accented">20</span> объявлений на странице поиска
+            </li>
+            <li>
+                <span class="bold accented">8</span> фото в объявлении — медиана
+            </li>
+            <li>
+                <span class="bold accented">42</span> фото в объявлении — максимум для загрузки
+            </li>
+            <li>
+                <span class="bold accented">160</span> фото на странице поиска — медиана
+            </li>
+            <li>
+                <span class="bold accented">840</span> фото на странице поиска — максимум
+            </li>
+        </ul>
+        <img src="./images/arrow-mnogovato-no-terpimo.svg" alt="" class="place b r" style="width: 36%; bottom: 29%; right: 1%;">
+    </section>
+     <section class="slide">
+        <h3>Галерея фотографий</h3>
+        <ul>
+            <li>
+                <span class="bold accented">20</span> объявлений на странице поиска
+            </li>
+            <li>
+                <span class="bold accented muted line-throughed">8</span> <span class="bold accented">14</span> фото в объявлении — медиана
+            </li>
+            <li>
+                <span class="bold accented muted line-throughed">42</span> <span class="bold accented">108</span> фото в объявлении — максимум для загрузки
+            </li>
+            <li>
+                <span class="bold accented muted line-throughed">160</span> <span class="bold accented">280</span> фото на странице поиска — медиана
+            </li>
+            <li>
+                <span class="bold accented muted line-throughed">840</span> <span class="bold accented">2160</span> фото на странице поиска — максимум
+            </li>
+        </ul>
+    </section>
+    <section class="slide">
+        <h3>Галерея фотографий</h3>
+        <ul>
+            <li>
+                <span class="bold accented">20</span> объявлений на странице поиска
+            </li>
+            <li>
+                <span class="bold accented muted line-throughed">8</span> <span class="bold accented">14</span> фото в объявлении — медиана
+            </li>
+            <li>
+                <span class="bold accented muted line-throughed">42</span> <span class="bold accented">108</span> фото в объявлении — максимум для загрузки
+            </li>
+            <li>
+                <span class="bold accented muted line-throughed">160</span> <span class="bold accented">280</span> фото на странице поиска — медиана
+            </li>
+            <li>
+                <span class="bold accented muted line-throughed">840</span> <span class="bold accented">2160</span> фото на странице поиска — максимум
+            </li>
+        </ul>
+        <img src="./images/arrow-ochen-mnogo.svg" alt="" class="place b r" style="width: 24%; bottom: 25%; right: 4%;">
+    </section>
+    
+     <section class="slide">
+        <img src="./images/screenshot-gallery-with-virtualization.jpg" alt="" class="place rounded light-image" style="width: 90%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-gallery-with-virtualization.jpg" alt="" class="place rounded light-image" style="width: 90%;">
+        <img src="./images/arrow-virtualization-added.svg" alt="" class="place t r" style="width: 30%; top: 31%; right: 5%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-gallery-with-virtualization.jpg" alt="" class="place rounded light-image" style="width: 90%;">
+        <img src="./images/arrow-virtualization-added.svg" alt="" class="place t r" style="width: 30%; top: 31%; right: 5%;">
+        <img src="./images/arrow-no-more-than-5-photos.svg" alt="" class="place t r" style="width: 39%; top: 60.5%; right: 5%;">
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Оптимизация селекта</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/comp.png" alt="" class="place l" style="width: 40%; left: 15%;">
+        <img src="./images/phone.png" alt="" class="place r" style="width: 18%; right: 15%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/select-desktop.jpeg" alt="" class="place l rounded" style="width: 55%; left: 7%;">
+        <img src="./images/arrow-custom-select.svg" alt="" class="place t l" style="width: 21%; top: 24%; left: 27%;">
+    </section>
+    <section class="slide">
+        <img src="./images/select-desktop.jpeg" alt="" class="place l rounded" style="width: 55%; left: 7%;">
+        <img src="./images/select-mobile.jpeg" alt="" class="place r rounded" style="width: 20%; right: 10%;">
+        <img src="./images/arrow-custom-select.svg" alt="" class="place t l" style="width: 21%; top: 24%; left: 27%;">
+        <img src="./images/arrow-native-select.svg" alt="" class="place t l" style="width: 13%; top: 23%; left: 77%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-select-1.svg" alt="" class="place" style="height: 75%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-select-2.svg" alt="" class="place" style="height: 75%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-select-3.svg" alt="" class="place" style="height: 75%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-select-4.svg" alt="" class="place" style="height: 75%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/table-dom-size-optimization-result.svg" alt="" class="place" style="width: 60%; top: 45%;">
+    </section>
+
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="INP"
+                start-value="467"
+                target-value="200"
+                value-suffix="ms"
+                thresholds='{"good":200,"warning":500}'
+                optimizations='[
+                    {"label":"Уменьшение DOM-size","delta":-244}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide">
+        <img src="./images/mem-hmm (1).png" alt="" class="place" style="height: 70%;">
+    </section>
+
+    <!-- <section class="slide">
+        <img src="./images/scheme-what-is-interaction-1.svg" alt="" class="place" style="width: 65%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-what-is-interaction-2.svg" alt="" class="place" style="width: 65%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-what-is-interaction-3.svg" alt="" class="place" style="width: 65%;">
+    </section> -->
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Поиск проблемных мест локально</h2>
+    </section>
+
+    <section class="slide">
+        <h3>Поиск проблемных мест локально</h3>
+        <ul>
+            <li class="next">составили список сценариев с интеракциями на странице</li>
+            <li class="next">открыли вкладку Performance в DevTools</li>
+            <li class="next">включили тротлинг</li>
+            <li class="next">стали проходить сценарии и фиксировать показатели</li>
+        </ul>
+    </section>
+
+     <section class="slide">
+        <img src="./images/screenshot-devtools-performace-inp-1.jpg" alt="" class="place" style="width: 100%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-devtools-performace-inp-1.jpg" alt="" class="place" style="width: 100%;">
+        <img src="./images/arrow-metric-value.svg" alt="" class="place b r" style="width: 14%; bottom: 33%; right: 24%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-devtools-performace-inp-1.jpg" alt="" class="place" style="width: 100%;">
+        <img src="./images/arrow-metric-value.svg" alt="" class="place b r" style="width: 14%; bottom: 33%; right: 24%;">
+        <img src="./images/arrow-bad-inp-trigger.svg" alt="" class="place l t" style="height: 61%; top: 25%; left: 2%;">
+    </section>
+
+     <section class="slide">
+        <img src="./images/screenshot-devtools-performace-inp-2.jpg" alt="" class="place" style="width: 100%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-devtools-performace-inp-2.jpg" alt="" class="place" style="width: 100%;">
+        <img src="./images/arrow-what-exactly-slows.svg" alt="" class="place b r" style="width: 15%; bottom: 47%; right: 21%;">
+    </section>
+
+    <section class="slide slide-section-title">
+        <h3>Оптимизация INP</h3>
+        <h2>Оптимизация раскрытия свернутых элементов</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-cars-list-closed.jpg" alt="" class="place rounded l light-image" style="height: 70%; left: 8%;">
+
+        <img src="./images/20-firms.svg" alt="" class="place t r" style="height: 7%; top: 7%; right: 76%;">
+    </section>
+     <section class="slide">
+        <img src="./images/screenshot-cars-list-closed.jpg" alt="" class="place rounded l light-image" style="height: 70%; left: 8%;">
+
+        <img src="./images/arrow-tap.svg" alt="" class="place b r" style="width: 5%; bottom: 26%; right: 75%;">
+        <img src="./images/20-firms.svg" alt="" class="place t r" style="height: 7%; top: 7%; right: 76%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-cars-list-closed.jpg" alt="" class="place rounded l light-image" style="height: 70%; left: 8%;">
+        <img src="./images/screenshot-cars-list-expanded.jpg" alt="" class="place rounded r light-image" style="height: 70%; right: 8%;">
+
+        <img src="./images/arrow-tap.svg" alt="" class="place b r" style="width: 5%; bottom: 26%; right: 75%;">
+        <img src="./images/20-firms.svg" alt="" class="place t r" style="height: 7%; top: 7%; right: 76%;">
+        <img src="./images/216-firms.svg" alt="" class="place t r" style="height: 7%; top: 7%; right: 13.5%;">
+        <img src="./images/arrow-9.svg" alt="" class="place" style="width: 30%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-cars-list-closed.jpg" alt="" class="place rounded l light-image" style="height: 70%; left: 8%;">
+        <img src="./images/screenshot-cars-list-closed.jpg" alt="" class="place rounded light-image" style="height: 70%;">
+        <img src="./images/screenshot-cars-list-expanded.jpg" alt="" class="place rounded r light-image" style="height: 70%; right: 8%;">
+
+        <img src="./images/arrow-tap.svg" alt="" class="place b r" style="width: 5%; bottom: 26%; right: 75%;">
+        <img src="./images/20-firms.svg" alt="" class="place t r" style="height: 7%; top: 7%; right: 76%;">
+        <img src="./images/20-firms.svg" alt="" class="place t r" style="height: 7%; top: 7%; right: 45%;">
+        <img src="./images/216-firms.svg" alt="" class="place t r" style="height: 7%; top: 7%; right: 13.5%;">
+        <img src="./images/arrow-10.svg" alt="" class="place l" style="width: 7%; left: 31%">
+        <img src="./images/arrow-10.svg" alt="" class="place r" style="width: 7%; right: 31%">
+
+        <img src="./images/pause.svg" alt="" class="place b" style="width: 9%; bottom: 30%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-cars-list-closed.jpg" alt="" class="place rounded l light-image" style="height: 70%; left: 8%;">
+        <img src="./images/screenshot-cars-list-spinner.jpg" alt="" class="place rounded light-image" style="height: 70%;">
+        <img src="./images/screenshot-cars-list-expanded.jpg" alt="" class="place rounded r light-image" style="height: 70%; right: 8%;">
+
+        <img src="./images/arrow-tap.svg" alt="" class="place b r" style="width: 5%; bottom: 26%; right: 75%;">
+        <img src="./images/20-firms.svg" alt="" class="place t r" style="height: 7%; top: 7%; right: 76%;">
+        <img src="./images/20-firms.svg" alt="" class="place t r" style="height: 7%; top: 7%; right: 45%;">
+        <img src="./images/216-firms.svg" alt="" class="place t r" style="height: 7%; top: 7%; right: 13.5%;">
+        <img src="./images/arrow-10.svg" alt="" class="place l" style="width: 7%; left: 31%">
+        <img src="./images/arrow-10.svg" alt="" class="place r" style="width: 7%; right: 31%">
+
+        <img src="./images/arrow-spinner.svg" alt="" class="place b" style="width: 8%; bottom: 28%; left: 55%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-desktop-filter-closed.jpg" alt="" class="place rounded light-image" style="width: 60%;">
+        <img src="./images/arrow-black.svg" alt="" class="place b l" style="width: 7%; bottom: 35%; left: 32%;">
+    </section>
+
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="INP"
+                start-value="467"
+                target-value="200"
+                value-suffix="ms"
+                thresholds='{"good":200,"warning":500}'
+                optimizations='[
+                    {"label":"Уменьшение DOM-size","delta":-244},
+                    {"label": "Свернутые элементы", "delta":-63}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide slide-section-title">
+        <h3>Оптимизация INP</h3>
+        <h2>Оптимизация расчета среднего цвета на фото</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-review-cards.jpg" alt="" class="place rounded light-image" style="width: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/screenshot-review-cards.jpg" alt="" class="place rounded light-image" style="width: 80%;">
+        <img src="./images/arrow-bg-from-avg-photo-color.svg" alt="" class="place t r" style="width: 52%; top: 4%; right: 10%;">
+    </section>
+
+    <section class="slide">
+        <pre class="place t l" style="font-size: 0.9em; top: 10%; left: 5%;">
+        <code class="language-javascript">
+            const setAverageColorForImages = (images) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 1;
+                canvas.height = 1;
+
+                for (const img of images) {
+                    ctx.drawImage(img, 0, 0, 1, 1);
+                    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+                    img.dataset.avgColor = `rgb(${r},${g},${b})`;
+                }
+            };
+        </code>
+        </pre>
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="font-size: 0.9em; top: 10%; left: 5%;">
+        <code class="language-javascript">
+            const setAverageColorForImages = (images) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 1;
+                canvas.height = 1;
+
+                for (const img of images) {
+                    ctx.drawImage(img, 0, 0, 1, 1);
+                    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+                    img.dataset.avgColor = `rgb(${r},${g},${b})`;
+                }
+            };
+        </code>
+        </pre>
+        <img src="./images/arrow-read-avg-color.svg" alt="" class="place t r" style="width: 29%; top: 42%; right: 12%;">
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="font-size: 0.9em; top: 10%; left: 5%;">
+        <code class="language-javascript">
+            const setAverageColorForImages = (images) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 1;
+                canvas.height = 1;
+
+                for (const img of images) {
+                    ctx.drawImage(img, 0, 0, 1, 1);
+                    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+                    img.dataset.avgColor = `rgb(${r},${g},${b})`;
+                }
+            };
+        </code>
+        </pre>
+        <img src="./images/arrow-read-avg-color.svg" alt="" class="place t r" style="width: 29%; top: 42%; right: 12%;">
+        <img src="./images/arrow-save.svg" alt="" class="place b r" style="width: 18%; bottom: 18%; right: 41%;">
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="font-size: 0.9em; top: 10%; left: 5%;">
+        <code class="language-javascript">
+            const setAverageColorForImages = (images) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 1;
+                canvas.height = 1;
+
+                for (const img of images) {
+                    ctx.drawImage(img, 0, 0, 1, 1);
+                    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+                    img.dataset.avgColor = `rgb(${r},${g},${b})`;
+                }
+            };
+        </code>
+        </pre>
+        <img src="./images/arrow-read-avg-color.svg" alt="" class="place t r" style="width: 29%; top: 42%; right: 12%;">
+        <img src="./images/arrow-save.svg" alt="" class="place b r" style="width: 18%; bottom: 18%; right: 41%;">
+        <img src="./images/arrow-long-task.svg" alt="" class="place t l" style="width: 17%; top: 53%; left: 2%;">
+        <img src="./images/line-6.svg" alt="" class="place t l" style="width: 32%; top: 61%; left: 43%;">
+    </section>
+    <section class="slide">
+        <pre class="place t l" style="font-size: 0.9em; top: 10%; left: 5%;">
+        <code class="language-javascript">
+            const setAverageColorForImages = (images) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                canvas.width = 1;
+                canvas.height = 1;
+
+                for (const img of images) {
+                    ctx.drawImage(img, 0, 0, 1, 1);
+                    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+                    img.dataset.avgColor = `rgb(${r},${g},${b})`;
+                }
+            };
+        </code>
+        </pre>
+        <img src="./images/line-6.svg" alt="" class="place" style="width: 32%; top: 35%; left: 76%;">
+        <img src="./images/arrow-temp-solution.svg" alt="" class="place t r" style="width: 24%; top: 5%; right: 9%;">
+    </section>
+
+    <section class="slide">
+        <pre class="place" style="font-size: 0.9em;">
+        <code class="language-javascript">
+            const reviewsData = getDataFromBackend();
+
+            console.log(reviewsData[0]);
+
+            // photoUrl: 'img.jpg'
+            // photoAverageColor: 'rgb(130, 20, 94)'
+        </code>
+        </pre>
+    </section>
+    <section class="slide">
+        <pre class="place" style="font-size: 0.9em;">
+        <code class="language-javascript">
+            const reviewsData = getDataFromBackend();
+
+            console.log(reviewsData[0]);
+
+            // photoUrl: 'img.jpg'
+            // photoAverageColor: 'rgb(130, 20, 94)'
+        </code>
+        </pre>
+        <img src="./images/arrow-solution-backend.svg" alt="" class="place" style="width: 64%; top: 25%; left: 53%;">
+    </section>
+    <section class="slide">
+        <pre class="place" style="font-size: 0.9em;">
+        <code class="language-javascript">
+            const reviewsData = getDataFromBackend();
+
+            console.log(reviewsData[0]);
+
+            // photoUrl: 'img.jpg'
+            // photoAverageColor: 'rgb(130, 20, 94)'
+        </code>
+        </pre>
+        <img src="./images/arrow-solution-backend.svg" alt="" class="place" style="width: 64%; top: 25%; left: 53%;">
+        <img src="./images/arrow-avg-color-from-backend.svg" alt="" class="place" style="width: 69%; top: 75%; left: 53%;">
+    </section>
+
+     <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="INP"
+                start-value="467"
+                target-value="200"
+                value-suffix="ms"
+                thresholds='{"good":200,"warning":500}'
+                optimizations='[
+                    {"label":"Уменьшение DOM-size","delta":-244},
+                    {"label": "Свернутые элементы", "delta":-63},
+                    {"label": "Средний цвет фото", "delta":-20}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Поиск проблемных мест удаленно</h2>
+    </section>
+
+    <section class="slide">
+        <pre class="place">
+        <code class="language-javascript">
+            import { onINP } from 'web-vitals';
+
+            onINP(sendToBackend);
+        </code>
+        </pre>
+    </section>
+
+    <section class="slide">
+        <pre class="place">
+        <code class="language-javascript">
+            import { onINPAttribution } from 'web-vitals/attribution';
+
+            onINPAttribution(sendToBackend);
+        </code>
+        </pre>
+    </section>
+
+    <section class="slide">
+        <pre class="place">
+        <code class="language-javascript">
+            const sendToBackend = (inpMetricData) => {
+                const {
+                    value, // значение INP
+                    attribution: {
+                        interactionType, // 'pointer' | 'keyboard'
+                        interactionTarget, // CSS-селектор триггера
+                        inputDelay, // задержка обработки
+                        processingDuration, // время выполнения обработчиков
+                        presentationDelay, // задержка отрисовки
+                        loadState, // статус загрузки страницы
+                    },
+                } = inpMetricData;
+                logToBackend(...);
+            };
+        </code>
+        </pre>
+    </section>
+
+    <section class="slide">
+        <img src="./images/mem-cat-2.jpeg" alt="" class="place rounded" style="height: 60%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/attribution-table.svg" alt="" class="place l" style="height: 60%; left: 10%;">
+    </section>
+    <section class="slide">
+        <img src="./images/attribution-table.svg" alt="" class="place l" style="height: 60%; left: 10%;">
+        <img src="./images/why-link-inp.svg" alt="" class="place r" style="height: 30%; right: 13%; top: 33%;">
+        <img src="./images/mem-hmm (1).png" alt="" class="place r" style="height: 30%; right: 7%; top: 63%;">
+    </section>
+
+    <section class="slide">
+        <pre class="place l" style="font-size: 0.8em; left: 17%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">a</span> 
+            <span class="hljs-attribute">href</span>="<span class="hljs-string">/123456/</span>"
+            <span class="hljs-attribute">class</span>="<span class="hljs-string">link-to-bulletin</span>"
+            <span class="hljs-attribute">data-stats-name</span>="<span class="hljs-string">link-to-bulletin</span>"
+            <span class="hljs-attribute">data-stats-track-click</span>="<span class="hljs-string">true</span>"
+        /&gt;
+        &lt;<span class="hljs-selector-tag">a</span> 
+            <span class="hljs-attribute">href</span>="<span class="hljs-string">/all/</span>"
+            <span class="hljs-attribute">class</span>="<span class="hljs-string">link-to-list</span>"
+            <span class="hljs-attribute">data-stats-name</span>="<span class="hljs-string">link-to-list</span>"
+            <span class="hljs-attribute">data-stats-track-click</span>="<span class="hljs-string">true</span>"
+        /&gt;
+        &lt;<span class="hljs-selector-tag">a</span> 
+            <span class="hljs-attribute">href</span>="<span class="hljs-string">/reviews/</span>"
+            <span class="hljs-attribute">class</span>="<span class="hljs-string">link-to-reviews</span>"
+            <span class="hljs-attribute">data-stats-name</span>="<span class="hljs-string">link-to-reviews</span>"
+            <span class="hljs-attribute">data-stats-track-click</span>="<span class="hljs-string">true</span>"
+        /&gt;
+        </code>
+        </pre>
+    </section>
+    <section class="slide">
+        <pre class="place l" style="font-size: 0.8em; left: 17%;">
+        <code class="language-xml hljs" data-highlighted="yes">
+        &lt;<span class="hljs-selector-tag">a</span> 
+            <span class="hljs-attribute">href</span>="<span class="hljs-string">/123456/</span>"
+            <span class="hljs-attribute">class</span>="<span class="hljs-string">link-to-bulletin</span>"
+            <span class="hljs-attribute">data-stats-name</span>="<span class="hljs-string">link-to-bulletin</span>"
+            <span class="hljs-attribute">data-stats-track-click</span>="<span class="hljs-string">true</span>"
+        /&gt;
+        &lt;<span class="hljs-selector-tag">a</span> 
+            <span class="hljs-attribute">href</span>="<span class="hljs-string">/all/</span>"
+            <span class="hljs-attribute">class</span>="<span class="hljs-string">link-to-list</span>"
+            <span class="hljs-attribute">data-stats-name</span>="<span class="hljs-string">link-to-list</span>"
+            <span class="hljs-attribute">data-stats-track-click</span>="<span class="hljs-string">true</span>"
+        /&gt;
+        &lt;<span class="hljs-selector-tag">a</span> 
+            <span class="hljs-attribute">href</span>="<span class="hljs-string">/reviews/</span>"
+            <span class="hljs-attribute">class</span>="<span class="hljs-string">link-to-reviews</span>"
+            <span class="hljs-attribute">data-stats-name</span>="<span class="hljs-string">link-to-reviews</span>"
+            <span class="hljs-attribute">data-stats-track-click</span>="<span class="hljs-string">true</span>"
+        /&gt;
+        </code>
+        </pre>
+        <img src="./images/arrow-analytics-attrs.svg" alt="" class="place r" style="height: 31%; right: 10%;">
+        <img src="./images/line-7.svg" alt="" class="place l t" style="height: 11%; top: 23%; left: 18%;">
+        <img src="./images/line-7.svg" alt="" class="place l t" style="height: 11%; top: 49%; left: 18%;">
+        <img src="./images/line-7.svg" alt="" class="place l t" style="height: 11%; top: 75%; left: 18%;">
+    </section>
+
+    <section class="slide slide-section-title">
+        <h3>Оптимизация INP</h3>
+        <h2>Асинхронная отправка аналитики</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-analyticks-send-0.svg" alt="" class="place" style="width: 55%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-analyticks-send-1.svg" alt="" class="place" style="width: 55%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-analyticks-send-2.svg" alt="" class="place" style="width: 55%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-analyticks-send-3.svg" alt="" class="place" style="width: 55%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-analyticks-send-4.svg" alt="" class="place" style="width: 55%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-analyticks-send-5.svg" alt="" class="place" style="width: 55%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-analyticks-send-6.svg" alt="" class="place" style="width: 55%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-analyticks-send-7.svg" alt="" class="place" style="width: 55%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/rum-inp-bulls-list-auto-3.png" alt="" class="place rounded" style="width: 90%;">
+    </section>
+    <section class="slide">
+        <img src="./images/rum-inp-bulls-list-auto-3.png" alt="" class="place rounded" style="width: 90%;">
+        <img src="./images/line-punktir-vertical.svg" alt="" class="place r t" style="height: 61%; top: 24%; right: 26%;">
+        <img src="./images/arrow-async-analytics.svg" alt="" class="place r t" style="width: 29%; top: 26%; right: 30%;">
+    </section>
+
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                highlight-last-step
+                chart-height="350px"
+                metric-title="INP"
+                start-value="467"
+                target-value="200"
+                value-suffix="ms"
+                thresholds='{"good":200,"warning":500}'
+                optimizations='[
+                    {"label":"Уменьшение DOM-size","delta":-244},
+                    {"label": "Свернутые элементы", "delta":-63},
+                    {"label": "Средний цвет фото", "delta":-20},
+                    {"label":"Асинхронная аналитика","delta":-50}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+    <section class="slide">
+        <div class="place" style="height: 80%; width: 80%;">
+            <metric-optimization-chart
+                chart-height="350px"
+                metric-title="INP"
+                start-value="467"
+                target-value="200"
+                value-suffix="ms"
+                thresholds='{"good":200,"warning":500}'
+                optimizations='[
+                    {"label":"Уменьшение DOM-size","delta":-244},
+                    {"label": "Свернутые элементы", "delta":-63},
+                    {"label": "Средний цвет фото", "delta":-20},
+                    {"label":"Асинхронная аналитика","delta":-50}
+                ]'>
+            </metric-optimization-chart>
+        </div>
+    </section>
+
+    <section class="slide slide-section-title">
+        <h2 class="place centered-slide-title">Мониторинг и алерты</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/man-and-dashboards.jpg" alt="" class="place" style="width: 100%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-rum-dashbpard.jpg" alt="" class="place rounded" width="85%;">
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Alertmanager</h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/scheme-alerts-1.svg" alt="" class="place" style="width: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-alerts-2.svg" alt="" class="place" style="width: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-alerts-3.svg" alt="" class="place" style="width: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-alerts-4.svg" alt="" class="place" style="width: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-alerts-5.svg" alt="" class="place" style="width: 80%;">
+    </section>
+    <section class="slide">
+        <img src="./images/scheme-alerts-6.svg" alt="" class="place" style="width: 80%;">
+    </section>
+
+    <section class="slide">
+        <pre class="place" style="font-size: 0.7em;">
+        <code class="language-yaml">
+            - alert: InpExitedGreenZone
+                annotations:
+                    message: '[RUM] INP вышел из зеленой зоны.'
+                    summary: 'INP превысил порог в 200 ms в {{ $labels.app_slug }} на {{ $labels.view_type }}'
+                    dashboard: 'ссылка на дашборд'
+                    runbook: 'ссылка на ранбук'
+                expr: |
+                    histogram_quantile(
+                        0.75,
+                        sum by (le, app_slug, view_type) (
+                            rate(
+                                frontend_rum_inp_histogram_bucket[1d]
+                            )
+                        )
+                    ) > 200
+                for: 3d
+        </code>
+        </pre>
+    </section>
+
+    <section class="slide">
+        <img src="./images/screenshot-alert-sample-mm.jpg" alt="" class="place t rounded" style="top: 20%; width: 60%;">
+        <img src="./images/screenshot-alert-sample-tg.jpg" alt="" class="place b rounded" style="bottom: 20%; width: 60%;">
+        <img src="./images/text-alert-mm.svg" alt="" class="place t l" style="top: 12%; left: 20%; height: 8%;">
+        <img src="./images/text-alert-tg.svg" alt="" class="place t l" style="top: 53.5%; left: 20%; height: 8%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/runbook-sample.jpg" alt="" class="place rounded light-image" style="width: 80%;">
+    </section>
+
+    <section class="slide slide-section-title">
+        <h2 class="place centered-slide-title">Подытожим</h2>
+    </section>
+
+    <section class="slide">
+        <div class="lh-wrap place" style="width: 65%;">
+            <div class="lh-metrics">
+                <div class="lh-row lh-row__yellow">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">TTFB</div>
+                    <div class="lh-val">1210 ms</div>
+                    <div class="lh-thr">цель &lt; 800 ms</div>
+                    <span class="lh-badge">средне</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">FCP</div>
+                    <div class="lh-val">1690 ms</div>
+                    <div class="lh-thr">цель &lt; 1800 ms</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">LCP</div>
+                    <div class="lh-val">2250 ms</div>
+                    <div class="lh-thr">цель &lt; 2500 ms</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">CLS</div>
+                    <div class="lh-val">0.05</div>
+                    <div class="lh-thr">цель &lt; 0.1</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__yellow">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">INP</div>
+                    <div class="lh-val">467 ms</div>
+                    <div class="lh-thr">цель &lt; 200 ms</div>
+                    <span class="lh-badge">средне</span>
+                </div>
+            </div>
+        </div>
+
+        <img src="./images/bulls-list-mobile-75p.svg" alt="" class="place t l" style="height: 8%; top: 8%; left: 18%;">
+        <img src="./images/january-2024.svg" alt="" class="place t r" style="height: 8%; top: 8%; right: 18%;">
+    </section>
+
+    <section class="slide">
+        <div class="lh-wrap place" style="width: 65%;">
+            <div class="lh-metrics">
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">TTFB</div>
+                    <div class="lh-val">787 ms</div>
+                    <div class="lh-thr">цель &lt; 800 ms</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">FCP</div>
+                    <div class="lh-val">1119 ms</div>
+                    <div class="lh-thr">цель &lt; 1800 ms</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">LCP</div>
+                    <div class="lh-val">1360 ms</div>
+                    <div class="lh-thr">цель &lt; 2500 ms</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">CLS</div>
+                    <div class="lh-val">0.05</div>
+                    <div class="lh-thr">цель &lt; 0.1</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+                <div class="lh-row lh-row__green">
+                    <div class="lh-dot"></div>
+                    <div class="lh-name">INP</div>
+                    <div class="lh-val">90 ms</div>
+                    <div class="lh-thr">цель &lt; 200 ms</div>
+                    <span class="lh-badge">хорошо</span>
+                </div>
+            </div>
+        </div>
+
+        <img src="./images/bulls-list-mobile-75p.svg" alt="" class="place t l" style="height: 8%; top: 8%; left: 18%;">
+        <img src="./images/april-2026.svg" alt="" class="place t r" style="height: 8%; top: 8%; right: 18%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/summary-01-2024.png" alt="" class="place rounded" style="width: 80%;">
+        <img src="./images/january-2024.svg" alt="" class="place t r" style="height: 8%; top: 8%; right: 11%;">
+    </section>
+
+    <section class="slide">
+        <img src="./images/summary-03-2026.jpg" alt="" class="place rounded" style="width: 80%;">
+        <img src="./images/april-2026.svg" alt="" class="place t r" style="height: 8%; top: 8%; right: 11%;">
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Неожиданный, но приятный бонус</h2>
+        <img src="./images/mem-neojidano-i-priyatno.png" alt="" class="place r b light-image" style="width: 20%;">
+    </section>
+
+    <section class="slide">
+        <h2 class="place centered-slide-title">Рост инженерной культуры 🚀</h2>
+    </section>
+
+    <section class="slide slide-section-title">
+        <h2 class="place centered-slide-title">Рекомендации</h2>
+    </section>
+
+    <section class="slide">
+        <h3>Советы для ваших оптимизаций</h3>
+        <ul>
+            <li class="next">используйте RUM (Real User Monitoring)</li>
+            <li class="next">декомпозируйте и держите фокус на одной метрике</li>
+            <li class="next">оптимизируйте в первую очередь популярные сценарии</li>
+            <li class="next">внедряйте оптимизации поэтапно</li>
+            <li class="next">документируйте и делитесь результатами с командой</li>
+        </ul>
+    </section>
+
+    <section class="slide slide-section-title">
+        <h2 class="place centered-slide-title">📚 Что ещё почитать?</h2>
+    </section>
+
+    <section class="slide">
+        <h3>Web Vitals</h3>
+        <ul>
+            <li>
+                <a href="https://akhmadullin.me/talks/codefest-15/" class="link-to-recommendation">Web Vitals: что это и как мы их собираем</a>
+            </li>
+            <li>
+                <a href="https://addyosmani.com/blog/core-web-vitals/" class="link-to-recommendation">История появления и развития web vitals</a>
+            </li>
+            <li>
+                <a href="https://developers.google.com/learn/pathways/web-vitals" class="link-to-recommendation">Improve your website with Web Vitals</a>
+            </li>
+            <li>
+                <a href="https://csswizardry.gumroad.com/l/perfect-devtools" class="link-to-recommendation">Setting up DevTools for Performance Testing</a>
+            </li>
+            <li>
+                <a href="https://www.iamtk.co/web-performance-roadmap" class="link-to-recommendation">Web performance roadmap</a>
+            </li>
+        </ul>
+    </section>
+
+    <section class="slide">
+        <h3>Мониторинг</h3>
+        <ul>
+            <li>
+                <a href="https://habr.com/ru/companies/tochka/articles/683608/" class="link-to-recommendation">Человеческим языком про метрики</a>
+            </li>
+            <li>
+                <a href="https://habr.com/ru/companies/karuna/articles/771134/" class="link-to-recommendation">Best Practices монторинга в Grafana</a>
+            </li>
+            <li>
+                <a href="https://sre.google/workbook/" class="link-to-recommendation">Site Reliability Engineering Workbook</a>
+            </li>
+        </ul>
+    </section>
+
+    <!-- <section class="slide">
+        <h2 class="place centered-slide-title">Приготовьте телефоны <span>🤳🏼</span></h2>
+    </section>
+
+    <section class="slide">
+        <img src="./images/tg-channel-ava-3.jpg" class="place l rounded dark-image" alt="" style="width: 35%; left: 10%;">
+        <div class="place r" style="width: 22%; right: 14%; top:49%">
+            <h4 class="end__subheading" style="text-align: center; margin-top: 0;">Подписаться</h4>
+            <img src="./images/qr-code-to-tg-channel.svg" class="rounded qr-code" alt="" style="width: 100%;">
+        </div>
+        <a href="https://t.me/roma_akhmadullin" class="copyright">Рома вещает</a>
+    </section> -->
+
+    <!-- <section class="slide the-end without-progress" style="padding: 60px;">
+        <img src="./images/codefest-logo.png" class="place r t" alt="" style="width: 90px; top: 5%; right: 5%;">
+        <div><h2 style="text-transform: uppercase; font-size: 45px;">Всем быстрых сайтов!</h2></div>
+        <div style="display: flex; align-items: center; gap: 20px; margin-top: 30px;">
+            <img src="./images/roma-akmadullin.jpg" alt="" style="border-radius: 50%; width: 100px;">
+            <div>
+                <h3 style="margin: 0; line-height: 1; margin-bottom: 5px;">Рома Ахмадуллин</h3>
+                <p style="margin: 0; line-height: 1;">Дром</p>
+            </div>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <div style="width: 23%;">
+                <h4 class="end__subheading">Слайды</h4>
+                <img src="./images/qr-code-to-slides.svg" class="rounded qr-code" alt="" style="width: 100%;">
+            </div>
+            <div style="width: 23%;">
+                <h4 class="end__subheading">Телеграм-канал</h4>
+                <img src="./images/qr-code-to-tg-channel.svg" class="rounded qr-code" alt="" style="width: 100%;">
+            </div>
+            <div style="width: 23%;">
+                <h4 class="end__subheading">Оценить доклад</h4>
+                <img src="./images/qr-code-placeholder.svg" class="rounded qr-code" alt="" style="width: 100%; background: unset;">
+            </div>
+        </div>
+    </section> -->
+
+    <!-- <section class="the-end the-end-2 slide without-progress">
+        <div class="the-end-2-bio-block">
+            <div>
+                <h2>Всем быстрых сайтов!</h2>
+                <div class="the-end-2-bio-block__secondary-text">И соточку в Лайтхаусе :)</div>
+            </div>
+            <div class="the-end-2__bio">
+                <img src="./images/roma-akmadullin.jpg" alt="">
+                <div>
+                    <h3>Рома Ахмадуллин</h3>
+                    <div>Лид фронтенда, Дром</div>
+                </div>
+            </div>
+        </div>
+        <div class="the-end-2-tg-block">
+            <img src="./images/qr-code-to-tg-channel-with-tg-logo.svg" alt="">
+            <a href="https://t.me/roma_akhmadullin">@roma_akhmadullin</a>
+            <div style="font-size: 18px; color: #7e7e7e;">Про фронтенд и не только</div>
+        </div>
+    </section> -->
+    <!-- <section class="the-end the-end-2 slide without-progress">
+        <div class="the-end-2-bio-block">
+            <div style="text-transform: uppercase;">
+                <h2 style="font-size: 36px;">Всем быстрых сайтов!</h2>
+                <div class="the-end-2-bio-block__secondary-text">И соточку в Лайтхаусе :)</div>
+            </div>
+            <div class="the-end-2__bio">
+                <img src="./images/roma-akmadullin.jpg" alt="">
+                <div>
+                    <h3>Рома Ахмадуллин</h3>
+                    <div>Лид фронтенда, Дром</div>
+                </div>
+            </div>
+        </div>
+        <div class="the-end-2-tg-block">
+            <img src="./images/qr-code-to-tg-channel-with-tg-logo.svg" alt="">
+            <a href="https://t.me/roma_akhmadullin">@roma_akhmadullin</a>
+            <div style="font-size: 18px; color: #7e7e7e;">Про фронтенд и не только</div>
+        </div>
+    </section>
+
+    <section class="the-end the-end-2 slide without-progress">
+        <div class="the-end-2-bio-block">
+            <div style="text-transform: uppercase;">
+                <h2 style="font-size: 36px;">Всем быстрых сайтов!</h2>
+                <div class="the-end-2-bio-block__secondary-text">И соточку в Лайтхаусе :)</div>
+            </div>
+            <div class="the-end-2__bio">
+                <img src="./images/roma-akmadullin.jpg" alt="">
+                <div>
+                    <h3>Рома Ахмадуллин</h3>
+                    <div>Лид фронтенда, Дром</div>
+                </div>
+            </div>
+        </div>
+        <style>
+            .the-end-2__qr-codes-block {
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+
+            .the-end-2-tg-block_2 {
+                background-color: #ffffff;
+                color: #000000;
+                border-radius: 22px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 33px;
+                font-family: 'Montserrat', sans-serif;
+                font-weight: bold;
+
+                img {
+                    width: 50%;
+                }
+
+                a {
+                    color: #000000;
+                    line-height: 1;
+                    text-decoration: none;
+                    background-image: none;
+                }
+
+                a:hover {
+                    color: #ce2424;
+                }
+            }
+        </style>
+        <div class="the-end-2__qr-codes-block">
+            <div class="the-end-2-tg-block_2">
+                <img src="./images/qr-code-to-tg-channel-with-tg-logo.svg" alt="">
+                <div>
+                    <a href="https://t.me/roma_akhmadullin">@roma_akhmadullin</a>
+                    <div style="font-size: 18px; color: #7e7e7e;">Про фронтенд и не только</div>
+                </div>
+            </div>
+            <div class="the-end-2-tg-block_2">
+                <img src="./images/qr-code-to-tg-channel-with-tg-logo.svg" alt="">
+                <div>
+                    <a href="https://app.talkmeter.ru/r/CF26/019e1acb-9315-7105-9494-60bc738af21a">Оценить доклад</a>
+                    <div></div>
+                </div>
+            </div>
+        </div>
+    </section> -->
+
+    <section class="slide the-end the-end-3">
+        <div class="the-end-3-bio-block">
+            <div style="text-transform: uppercase;">
+                    <h2>Всем быстрых сайтов!</h2>
+                    <div class="the-end-3-bio-block__secondary-text">И соточку в Лайтхаусе :)</div>
+            </div>
+            <div class="the-end-3__bio">
+                <img src="./images/roma-akmadullin.jpg" alt="">
+                <div>
+                    <h3>Рома Ахмадуллин</h3>
+                    <div>Лид фронтенда, Дром</div>
+                </div>
+            </div>
+        </div>
+        <div class="the-end-3-qr-codes-blocks">
+            <div class="the-end-3-qr-code-block">
+                <img src="./images/qr-code-to-tg-channel-with-tg-logo.svg" alt="">
+                <a href="https://t.me/roma_akhmadullin">@roma_akhmadullin</a>
+                <div style="font-size: 16px; color: #7e7e7e;">Про фронтенд и не только</div>
+            </div>
+            <div class="the-end-3-qr-code-block">
+                <img src="./images/qr-code-vote-for-doklad.svg" alt="">
+                <a href="https://app.talkmeter.ru/r/CF26/019e1acb-9315-7105-9494-60bc738af21a">Оценить доклад</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- <section id="the-end" class="slide without-progress" style="padding: 60px;">
+        <img src="./images/codefest-logo.png" class="place r t" alt="" style="width: 90px; top: 5%; right: 5%;">
+        <div><h2 style="text-transform: uppercase; font-size: 45px;">Всем быстрых сайтов!</h2></div>
+        <div style="display: flex; align-items: center; gap: 20px; margin-top: 65px;">
+            <img src="./images/roma-akmadullin.jpg" alt="" style="border-radius: 50%; width: 100px;">
+            <div>
+                <h3 style="margin: 0; line-height: 1; margin-bottom: 5px;">Рома Ахмадуллин</h3>
+                <p style="margin: 0; line-height: 1;">Дром</p>
+            </div>
+        </div>
+        <div class="end-bio__links place l b" style="left: 6%; bottom: 6%;">
+            <div>
+                <h4 class="end__subheading">Слайды</h4>
+                <div class="end-bio__link-block">
+                    <img src="./images/logo-github-2.svg" alt="" class="end-bio__link-logo" />
+                    <a href="https://github.com/akhmadullin/codefest16" class="end-bio__link">akhmadullin/codefest16</a>
+                </div>
+            </div>
+            <div>
+                <h4 class="end__subheading">Подписаться</h4>
+                <div class="end-bio__link-block">
+                    <img src="./images/logo-telegram.svg" alt="" class="end-bio__link-logo">
+                    <a href="https://t.me/roma_akhmadullin" class="end-bio__link">roma_akhmadullin</a>
+                </div>
+            </div>
+        </div>
+        <div class="place r b" style="width: 22%; bottom: 7%; right: 5%;">
+            <h4 class="end__subheading">Оценить доклад</h4>
+            <img src="./images/qr-code-placeholder.svg" class="rounded qr-code" alt="" style="width: 100%; background: unset;">
+        </div>
+    </section> -->
+   
+    <!-- <div class="progress"></div> -->
+
+    <script src="node_modules/chart.js/dist/chart.umd.js"></script>
+    <script src="./lib/metric-optimization-chart.js"></script>
+    <script src="node_modules/@shower/core/dist/shower.js"></script>
+    <script src="./lib/highlight/highlight.js"></script>
+    <script>hljs.highlightAll();</script>
+    <script>
+        (function() {
+            var mouseTimer = null, cursorVisible = true;
+
+            function disappearCursor() {
+                mouseTimer = null;
+                document.body.style.cursor = "none";
+                cursorVisible = false;
+            }
+
+            document.onmousemove = function() {
+                if (mouseTimer) {
+                    window.clearTimeout(mouseTimer);
+                }
+                if (!cursorVisible) {
+                    document.body.style.cursor = "default";
+                    cursorVisible = true;
+                }
+                mouseTimer = window.setTimeout(disappearCursor, 3000);
+            };
+        })();
+    </script>
+    <!-- Copyright © 2026 Roma Akhmadullin -->
+</body>
+</html>
